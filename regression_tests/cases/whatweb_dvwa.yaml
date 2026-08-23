@@ -1,0 +1,9 @@
+name: "whatweb_dvwa"
+prompt: "Sprawdź jakie technologie działają na http://192.168.0.110:8081"
+selected_tools: ["whatweb_scan"]
+must_contain:
+  - "Apache"
+  - "DVWA"
+must_not_contain:
+  - "nginx"
+max_duration_seconds: 1200

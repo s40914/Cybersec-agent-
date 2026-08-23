@@ -1,0 +1,15 @@
+name: "audyt_updates"
+prompt: "Sprawdź dostępne aktualizacje systemu"
+selected_tools: ["check_updates"]
+ground_truth:
+  source: "admin_agent"
+  endpoint: "check_updates"
+  checks:
+    - field: "total_upgradable"
+      must_contain: true
+must_not_contain:
+  - "brak zaległości"
+  - "nie ma dostępnych aktualizacji"
+  - "system jest aktualny"
+  - "wszystko zaktualizowane"
+max_duration_seconds: 400

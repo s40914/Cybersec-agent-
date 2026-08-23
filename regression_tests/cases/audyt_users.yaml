@@ -1,0 +1,10 @@
+name: "audyt_users"
+prompt: "Sprawdź listę użytkowników systemowych"
+selected_tools: ["list_users"]
+ground_truth:
+  source: "admin_agent"
+  endpoint: "list_users"
+  checks:
+    - field: "human_users.0.username"
+      must_contain: true
+max_duration_seconds: 400

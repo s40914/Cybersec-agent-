@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cybersec Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">&gt;_</span>
+      <div>
+        <div class="brand-title">CYBERSEC AGENT</div>
+        <div class="brand-sub">audyt bezpieczeństwa serwera</div>
+      </div>
+    </div>
+
+    <div class="side-section">
+      <div class="side-label">SESJA</div>
+      <div class="thread-row">
+        <span id="thread-id" class="thread-id">—</span>
+        <button id="new-session" class="btn-ghost" title="Nowa rozmowa">↻</button>
+      </div>
+    </div>
+
+    <div class="side-section">
+      <div class="side-label">TRYB</div>
+      <div id="mode-tabs" class="mode-tabs">
+        <button id="tab-cybersec" class="mode-tab mode-tab-active" data-category="cybersec">Audyt bezpieczeństwa</button>
+        <button id="tab-pentesting" class="mode-tab" data-category="pentesting">Pentesting</button>
+      </div>
+      <div id="tools-list" class="tools-list">
+        <div class="tools-loading">ładowanie…</div>
+      </div>
+      <div class="tools-actions">
+        <button id="tools-all" class="btn-link">zaznacz wszystkie</button>
+        <button id="tools-none" class="btn-link">wyczyść</button>
+      </div>
+    </div>
+
+    <div class="side-section side-section-grow">
+      <div class="side-label">MODELE W PIPELINE</div>
+      <div id="models-list" class="models-list">
+        <div class="tools-loading">ładowanie…</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <main class="main">
+
+    <div class="pulse-bar" id="pulse-bar">
+      <div class="pulse-idle" id="pulse-idle">Pipeline nieaktywny — zadaj pytanie, aby rozpocząć audyt</div>
+      <div class="pulse-track" id="pulse-track"></div>
+    </div>
+
+    <div class="thread" id="thread">
+      <div class="empty-state">
+        <div class="empty-mark">🛡</div>
+        <div class="empty-title">Gotowy do audytu</div>
+        <div class="empty-sub">Wybierz narzędzia po lewej (opcjonalnie) i zadaj pytanie o bezpieczeństwo serwera.</div>
+      </div>
+    </div>
+
+    <form class="composer" id="composer">
+      <span class="composer-prompt">$</span>
+      <select id="example-select" class="example-select">
+        <option value="" selected disabled>szybkie polecenia…</option>
+        <option value="sprawdź firewall i fail2ban">sprawdź firewall i fail2ban</option>
+        <option value="czy wazuh i suricata działają?">czy wazuh i suricata działają?</option>
+        <option value="zrób pełny audyt bezpieczeństwa">zrób pełny audyt bezpieczeństwa</option>
+        <option value="przeprowadź skan nmap na localhost">przeprowadź skan nmap na localhost</option>
+      </select>
+      <input id="composer-input" type="text" autocomplete="off" placeholder="zapytaj o bezpieczeństwo serwera…" />
+      <button type="submit" class="composer-send" id="composer-send">wyślij</button>
+    </form>
+
+  </main>
+</div>
+
+<script src="app.js?v=1786222638"></script>
+</body>
+</html>

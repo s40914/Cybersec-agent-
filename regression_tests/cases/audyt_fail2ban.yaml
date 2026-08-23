@@ -1,0 +1,13 @@
+name: "audyt_fail2ban"
+prompt: "Sprawdź status fail2ban"
+selected_tools: ["check_fail2ban"]
+ground_truth:
+  source: "admin_agent"
+  endpoint: "check_fail2ban"
+  checks:
+    - field: "service_active"
+      must_contain: true
+      language_variants:
+        active: ["active", "aktywny", "aktywna", "działa"]
+        inactive: ["inactive", "nieaktywny", "nieaktywna", "nie działa"]
+max_duration_seconds: 400

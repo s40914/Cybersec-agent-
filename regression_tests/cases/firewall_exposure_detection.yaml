@@ -1,0 +1,11 @@
+name: "firewall_exposure_detection"
+prompt: "Sprawdz otwarte porty na localhost oraz reguly firewalla (UFW), i ocen ekspozycje kazdego portu"
+selected_tools: ["scan_nmap", "check_firewall"]
+ground_truth:
+  source: "admin_agent"
+  endpoint: "check_firewall"
+  checks:
+    - field: "stdout"
+      extract: "exposed_firewall_ports"
+      must_contain: true
+max_duration_seconds: 900

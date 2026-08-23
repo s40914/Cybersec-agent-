@@ -1,0 +1,74 @@
+services:
+  orchestrator:
+    build: ./orchestrator
+    container_name: cybersec-orchestrator
+    restart: unless-stopped
+    environment:
+      ADMIN_AGENT_URL: "http://host.docker.internal:8765"
+      ADMIN_AGENT_TOKEN: "${ADMIN_AGENT_TOKEN}"
+      PENTEST_AGENT_URL: "http://pentest-agent:8766"
+      PENTEST_AGENT_TOKEN: "${PENTEST_AGENT_TOKEN}"
+      PENTEST_AGENT_TIMEOUT: "1200"
+      ADMIN_AGENT_TIMEOUT: "300"
+      OLLAMA_BASE_URL: "http://ollama:11434"
+      TOOL_MODEL_NAME: "qwen3:14b"
+      REPORT_MODEL_NAMES: "qwen2.5-coder:14b,SpeakLeash/bielik-11b-v3.0-instruct:Q5_K_M,qwen2.5:14b"
+      CRITIC_MODEL_NAME: "qwen2.5:14b"
+    ports:
+      - "127.0.0.1:8010:8010"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - ai_services_ai_net
+  chat-ui:
+    build: ./chat-ui
+    container_name: cybersec-chat-ui
+    restart: unless-stopped
+    depends_on:
+      - orchestrator
+    environment:
+      ORCHESTRATOR_URL: "http://orchestrator:8010"
+      REQUEST_TIMEOUT: "1800"
+    ports:
+      - "8501:8501"
+    networks:
+      - ai_services_ai_net
+  pentest-agent:
+    build: ./pentest-agent
+    container_name: cybersec-pentest-agent
+    restart: unless-stopped
+    env_file:
+      - .env.pentest-admin
+    environment:
+      PENTEST_AGENT_TOKEN: "${PENTEST_AGENT_TOKEN}"
+      PENTEST_AGENT_TIMEOUT: "1200"
+      ADMIN_AGENT_TIMEOUT: "300"
+    ports:
+      - "127.0.0.1:8766:8766"
+    networks:
+      - ai_services_ai_net
+  dvwa:
+    image: vulnerables/web-dvwa
+    container_name: dvwa
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    networks:
+      - ai_services_ai_net
+    volumes:
+      - dvwa_mysql_data:/var/lib/mysql
+  juice-shop:
+    image: bkimminich/juice-shop
+    container_name: juice-shop
+    restart: unless-stopped
+    ports:
+      - "8083:3000"
+    networks:
+      - ai_services_ai_net
+
+networks:
+  ai_services_ai_net:
+    external: true
+
+volumes:
+  dvwa_mysql_data:

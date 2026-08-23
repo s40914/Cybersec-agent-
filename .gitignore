@@ -1,0 +1,9 @@
+*.bak
+*.bak[0-9]
+*.bak-*
+*.bak.*
+.env
+.env.*
+__pycache__/
+*.pyc
+regression_tests/results/

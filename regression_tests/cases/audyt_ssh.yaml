@@ -1,0 +1,12 @@
+name: "audyt_ssh"
+prompt: "Sprawdź konfigurację SSH"
+selected_tools: ["check_ssh"]
+ground_truth:
+  source: "admin_agent"
+  endpoint: "check_ssh"
+  checks:
+    - field: "settings.Port"
+      must_contain: true
+    - field: "settings.PasswordAuthentication"
+      must_contain: true
+max_duration_seconds: 400

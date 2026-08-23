@@ -1,0 +1,18 @@
+name: "stealth_scan_detection"
+prompt: "Wykonaj cichy skan portow (stealth scan) na 192.168.0.110"
+selected_tools: ["nmap_stealth_scan"]
+ground_truth:
+  source: "pentest_agent"
+  endpoint: "nmap_stealth_scan"
+  params:
+    target: "192.168.0.110"
+  fetch_timeout: 120.0
+  checks:
+    - field: "stdout"
+      extract: "nmap_open_ports"
+      must_contain: true
+must_not_contain:
+  - "jest dostępny z internetu"
+  - "jest otwarty na świat"
+  - "KRYTYCZNE ryzyko"
+max_duration_seconds: 1200

@@ -1,0 +1,15 @@
+name: "scan_ports_localhost"
+prompt: "Wykonaj skan portów nmap na localhost"
+selected_tools: ["scan_nmap"]
+ground_truth:
+  source: "admin_agent"
+  endpoint: "scan_ports"
+  checks:
+    - field: "stdout"
+      extract: "listening_ports"
+      must_contain: true
+must_not_contain:
+  - "jest dostępny z internetu"
+  - "jest otwarty na świat"
+  - "KRYTYCZNE ryzyko"
+max_duration_seconds: 1200
