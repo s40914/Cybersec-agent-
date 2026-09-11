@@ -1,0 +1,20 @@
+[
+  {
+    "name": "stealth_scan_detection",
+    "status": "FAIL",
+    "duration": 305.3,
+    "ground_truth_must_contain": [
+      "8080"
+    ],
+    "ground_truth_must_not_contain": [
+      "jest dostępny z internetu",
+      "jest otwarty na świat",
+      "KRYTYCZNE ryzyko"
+    ],
+    "missing_required_phrases": [
+      "8080"
+    ],
+    "forbidden_phrases_found": [],
+    "full_report": "Based on the provided JSON data, here is a structured summary and recommendations for handling the security alerts:\n\n### Summary of Alerts\n\n#### STUN Binding Requests/Responses\n- **Timestamps**: Multiple entries between `2026-08-20T18:31:47` and `2026-08-20T18:31:47.157`.\n- **Rule ID**: 86601.\n- **Level**: 3 (Informational).\n- **Description**: Alerts for both STUN Binding Requests and Responses, indicating that a client is attempting to establish or maintain network connectivity through NAT devices.\n\n#### Suspicious Inbound Traffic to MySQL Port 3306\n- **Timestamps**:\n  - `2026-08-20T18:35:03.539`\n  - `2026-08-20T18:35:05.160`\n  - `2026-08-20T18:36:03.772`\n  - `2026-08-20T18:36:05.253`\n- **Rule ID**: 86601.\n- **Level**: 3 (Informational).\n- **Description**: Alerts for suspicious inbound traffic to MySQL port 3306, indicating potential unauthorized access attempts.\n\n### Analysis\n\n#### STUN Activity\n- The repeated alerts suggest continuous activity from a client attempting to establish or maintain network connectivity through NAT devices using STUN.\n- This behavior is common in applications like VoIP and other real-time communication tools that rely on STUN for traversal of NATs.\n\n#### Suspicious Inbound Traffic\n- Multiple alerts indicate suspicious inbound traffic targeting MySQL port 3306, which could be an attempt to probe or exploit the service.\n- The lack of source IP information makes it difficult to trace back the origin of these attempts.\n\n### Recommendations\n\n1. **Review STUN Configuration**\n   - Ensure that any applications using STUN are properly configured and monitored for unusual activity.\n   - Verify if the STUN requests and responses are expected based on your network's usage patterns.\n   - Implement additional logging to capture source IP addresses for better traceability.\n\n2. **Investigate MySQL Port 3306 Traffic**\n   - Investigate the origin of these connections to determine if they represent legitimate traffic or potential security threats.\n   - Check firewall rules and security policies to ensure that only trusted sources can access port 3306.\n   - Consider implementing additional logging and monitoring for traffic on this critical port.\n\n3. **Enhance Security Measures**\n   - Ensure MySQL services are patched and configured with strong authentication methods.\n   - Regularly change passwords and enforce strict access controls.\n   - Implement intrusion detection/prevention systems (IDS/IPS) to detect unusual patterns or potential attacks early.\n\n4. **Update Network Policies**\n   - Review network policies to ensure that only necessary traffic is allowed through firewalls and other security devices.\n   - Adjust alert thresholds based on your specific environment and threat landscape.\n\n### Next Steps\n\n1. **Review Network Configuration**\n   - Ensure that only trusted IP addresses can connect to MySQL port 3306.\n   - Implement strict access controls for critical services like MySQL.\n\n2. **Update Security Policies**\n   - Adjust firewall rules or security policies to mitigate unauthorized access attempts.\n   - Enable detailed logging and monitoring for traffic on critical ports.\n\n3. **Monitor and Log Traffic**\n   - Continuously monitor and log traffic on port 3306 for further analysis.\n   - Implement additional logging mechanisms to capture source IP addresses in future alerts.\n\nBy addressing these points, you can better understand the nature of the alerts and take appropriate actions to secure your network environment."
+  }
+]

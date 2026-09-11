@@ -1,0 +1,122 @@
+[
+  {
+    "name": "audyt_fail2ban",
+    "status": "PASS",
+    "duration": 128.5,
+    "ground_truth_must_contain": [
+      [
+        "active",
+        "aktywny",
+        "aktywna",
+        "działa"
+      ]
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza statusu Fail2Ban\n\nFail2Ban jest aktualnie aktywny i działa prawidłowo. Nie ma żadnych zbanowanych IP ani nieudanych prób logowania dla jaila sshd.\n\n#### Szczegóły:\n- **Status usługi fail2ban**: active\n- **Aktualnie zbanowane IP (jail sshd)**: 0\n- **Łączna liczba zbanowanych IP od startu (jail sshd)**: 0\n- **Aktualnie nieudane próby logowania (jail sshd)**: 0\n- **Łączna liczba nieudanych prób logowania (jail sshd)**: 0\n\n### Weryfikacja detekcji (Wazuh/Suricata)\nNie ma informacji o alertach z systemu IDS/IPS w surowych danych.\n\n---\n\n**Rozbieżności wykryte między modelami**\n- Brak rozbieżności między modelami. Wszystkie szkice są zgodne ze surowymi danymi i nie zawierają błędów lub halucynacji faktów.\n\n---\n\nWszystkie szkice były zgodne ze surowymi danymi, więc brak konkretnych rozbieżności do wskazania."
+  },
+  {
+    "name": "audyt_ssh",
+    "status": "PASS",
+    "duration": 176.7,
+    "ground_truth_must_contain": [
+      "2847",
+      "yes"
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza Konfiguracji SSH\n\n**Zweryfikowane Ustawienia SSH:**\n- Port SSH: 2847\n- PasswordAuthentication: yes\n- PermitRootLogin: prohibit-password\n- PubkeyAuthentication: yes\n- MaxAuthTries: 6\n- X11Forwarding: yes\n- AllowTcpForwarding: yes\n\n**Problem zabezpieczeń:**\n- Ustawienie `PasswordAuthentication=yes` oznacza, że logowanie hasłem jest włączone. To może zwiększyć podatność na ataki brute-force, szczególnie jeśli fail2ban jest nieaktywny lub port SSH (2847) jest dostępny z całego internetu.\n- Port SSH 2847 jest niestandardowy i wymaga dodatkowej weryfikacji, aby upewnić się, że jest on chroniony przez firewall.\n\n**Zalecenia:**\n1. **Wyłączenie logowania hasłem:** Zalecam wyłączenie opcji `PasswordAuthentication` i umożliwienie tylko uwierzytelniania kluczami publicznymi (`PubkeyAuthentication=yes`). To znacznie zmniejszy ryzyko ataków brute-force.\n2. **Fail2ban:** Upewnij się, że fail2ban jest skonfigurowany i działa prawidłowo na porcie 2847, aby chronić przed próbami logowania hasłem.\n\n**Podsumowanie:**\nKonfiguracja SSH zawiera kilka ustawień zwiększających ryzyko bezpieczeństwa. Zalecam zmianę ustawień `PasswordAuthentication` oraz włączenie i skonfigurowanie fail2ban, aby poprawić bezpieczeństwo serwera.\n\n::finding[medium]{concern=\"weak_auth_candidate\" title=\"Logowanie hasłem jest włączone\"}\nUstawienie `PasswordAuthentication=yes` oznacza, że logowanie hasłem jest włączone. To zwiększa ryzyko ataków brute-force.\n::\n\n### Weryfikacja detekcji (Wazuh/Suricata)\nBrak informacji o wykryciach przez system IDS/IPS.\n\n---\n\n**Rozbieżności wykryte między modelami:**\n- Model `SpeakLeash/bielik-11b-v3.0-instruct:Q5_K_M` podał, że port SSH jest niestandardowy i może utrudniać automatyczne skanowanie, co nie ma wpływu na ryzyko bezpieczenstwa, jeśli port jest chroniony przez firewall.\n- Model `qwen2.5-coder:14b` oraz `qwen2.5:14b` podali prawidłowe informacje o konfiguracji SSH i nie zawierają błędów.\n\nWszystkie modele były zgodne ze źródłem w kwestii ustawień konfiguracyjnych SSH, ale jedno z nich (SpeakLeash/bielik-11b-v3.0-instruct:Q5_K_M) podało dodatkowe uwagi, które nie mają wpływu na ocenę ryzyka bezpieczenstwa."
+  },
+  {
+    "name": "audyt_updates",
+    "status": "PASS",
+    "duration": 146.9,
+    "ground_truth_must_contain": [
+      "83"
+    ],
+    "ground_truth_must_not_contain": [
+      "brak zaległości",
+      "nie ma dostępnych aktualizacji",
+      "system jest aktualny",
+      "wszystko zaktualizowane"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Raport diagnostyczny: Aktualizacje systemu\n\n#### Wyniki narzędzia `check_updates`\n\nNarzędzie `check_updates` zostało wykonane **1 raz**. Oto wyniki:\n\n- Liczba wszystkich dostępnych aktualizacji (total_upgradable): **83**\n- Liczba aktualizacji bezpieczenstwa (security_updates_count): **0**\n- Liczba pozostalych aktualizacji (other_updates_count): **83**\n\nBrak konkretnych aktualizacji bezpieczeństwa na liście, co oznacza, że nie ma krytycznych patchów wymagających natychmiastowej instalacji. Jednakże, 83 inne aktualizacje są dostępne i powinny być zainstalowane w celu utrzymania systemu na bieżąco.\n\n#### Problemy bezpieczeństwa\n\nBrak wykrytych ryzykownych działań czy prób ataku na serwer w kontekście tej operacji. System detekcyjny (np. Wazuh lub Suricata) nie zgłosił żadnych alertów związanych z dostępnością aktualizacji systemu.\n\n#### Zalecenia\n\n1. **Zaktualizuj wszystkie 83 dostępne pakiety** w celu utrzymania systemu na bieżąco.\n2. Sprawdź, czy nie ma ukrytych aktualizacji bezpieczeństwa (np. poprzez ręczną weryfikację repozytoriów).\n3. Uruchom ponownie skanowanie aktualizacji za kilka dni, aby upewnić się, że nie pojawiły się nowe poprawki.\n\n---\n\n### Rozbieżności wykryte między modelami\n\nWszystkie modele zgadzają się ze źródłowymi danymi i nie podały błędnych informacji. Brak konkretnych rozbieżności w raporcie.\n\n---\n\n::finding[low]{concern=\"outdated_software\" title=\"Dostępne aktualizacje systemu\"}\nSystem zawiera 83 dostępne aktualizacje, które powinny być zainstalowane w celu utrzymania oprogramowania na bieżąco.\n::\n\nBrak dodatkowych istotnych ustaleń wymagających bloku ::finding."
+  },
+  {
+    "name": "audyt_users",
+    "status": "PASS",
+    "duration": 150.6,
+    "ground_truth_must_contain": [],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza Użytkowników Systemowych\n\n**Status narzędzia:**\nNarzędzie `list_users` zostało wykonane 1 raz.\n\n**Użytkownicy systemowi:**\n\n- **repas**\n  - UID: 1000\n  - Katalog domowy: /home/repas\n  - Shell: /bin/bash\n\n**Grupa sudo:**\n- Członkowie grupy sudo: repas\n\n### Problemy Bezpieczeństwa:\n\n1. **Użytkownik z uprawnieniami sudo:**  \n   Użytkownik `repas` jest członkiem grupy sudo, co daje mu pełne prawa administracyjne na systemie. To może być potencjalny ryzyko, jeśli użytkownik ten nie jest odpowiedzialnie zarządzany lub jeśli jego hasło jest słabe.\n\n### Wnioski:\n\n- **Zaleca się:**  \n  Użytkownikowi `repas` powinno być przypisane tylko tyle uprawnień, ile są absolutnie konieczne do wykonywania jego zadań. Jeśli nie jest to konieczne, użytkownik powinien zostać usunięty lub ograniczone jego uprawnienia.\n  \n- **Zaleca się:**  \n  Regularne sprawdzanie silności haseł użytkowników oraz stosowanie zasad wymagających silnych hasel i regularnej zmiany haseł.\n\n### Weryfikacja Detekcji (Wazuh/Suricata):\n\nNie ma informacji o alertach generowanych przez system IDS/IPS w wyniku tego skanu.\n\n::finding[medium]{concern=\"weak_auth_candidate\" title=\"Użytkownik z uprawnieniami sudo\"}\nUżytkownik `repas` jest członkiem grupy sudo, co daje mu pełne prawa administracyjne na systemie. To może być potencjalny ryzyko, jeśli użytkownik ten nie jest odpowiedzialnie zarządzany lub jeśli jego hasło jest słabe.\n::\n\n### Rozbieżności wykryte między modelami:\n- Model qwen2.5-coder:14b podał dodatkowe informacje o braku dodatkowych użytkowników, które nie są istotne dla bezpieczeństwa i nie są wymienione w surowych danych.\n\nWszystkie szkice były zgodne ze źródłem, poza dodatkowymi uwagami modelu qwen2.5-coder:14b, które nie mają wpływu na analizę bezpieczeństwa."
+  },
+  {
+    "name": "scan_ports_localhost",
+    "status": "FAIL",
+    "duration": 381.4,
+    "ground_truth_must_contain": [
+      "25",
+      "53",
+      "68",
+      "80",
+      "323",
+      "514",
+      "1514",
+      "1515",
+      "2019",
+      "2847",
+      "3001",
+      "5353",
+      "8010",
+      "8080",
+      "8081",
+      "8082",
+      "8083",
+      "8501",
+      "8765",
+      "8766",
+      "9200",
+      "9443",
+      "11434",
+      "41641",
+      "43951",
+      "50830",
+      "55000",
+      "64146"
+    ],
+    "ground_truth_must_not_contain": [
+      "dostępny z internetu",
+      "otwarty na świat",
+      "KRYTYCZNE"
+    ],
+    "missing_required_phrases": [
+      "8080",
+      "8081",
+      "8083",
+      "64146"
+    ],
+    "forbidden_phrases_found": [],
+    "full_report": "### Raport diagnostyczny skanu portów nmap na localhost\n\n#### 1. Wyniki głównego narzędzia (nmap)\n\nSkanowanie lokalnego hosta wykazało kilka usług nasłuchujących na różnych interfejsach. Poniżej przedstawiam listę usług i ich statusy:\n\n**UDP:**\n- Port 5353: Nasłuchiwanie na adresie 0.0.0.0 przez proces `avahi-daemon`.\n- Port 41641: Nasłuchiwanie na adresie 0.0.0.0 przez proces `tailscaled`.\n- Port 53: Nasłuchiwanie na adresie 127.0.0.54 przez proces `systemd-resolve`.\n- Port 53: Nasłuchiwanie na adresie 127.0.0.53%lo przez proces `systemd-resolve`.\n- Port 68: Nasłuchiwanie na adresie 192.168.0.110%eno1 przez proces `systemd-network`.\n- Port 323: Nasłuchiwanie na adresie 127.0.0.1 przez proces `chronyd`.\n- Port 514: Nasłuchiwanie na adresach 0.0.0.0 i [::] przez proces `docker-proxy`.\n\n**TCP:**\n- Port 11434: Nasłuchiwanie na adresie 192.168.0.110 przez proces `docker-proxy`.\n- Port 8082, 8010, 53, 9200, 8765, 8501, 9443, 3001, 25, 2019: Nasłuchiwanie na adresie 127.0.0.1 przez różne procesy (np. `docker-proxy`, `master`, `caddy`).\n- Port 3001: Nasłuchiwanie na adresie 192.168.0.110 przez proces `docker-proxy`.\n- Port 2847, 3001: Nasłuchiwanie na adresach 0.0.0.0 i [::] przez procesy `sshd` i `systemd`.\n- Port 50830: Nasłuchiwanie na adresie fd7a:115c:a1e0::fa01:94c4 przez proces `tailscaled`.\n- Port 8766, 2847: Nasłuchiwanie na adresach [::] przez różne procesy (np. `docker-proxy`, `sshd`).\n- Port 80: Nasłuchiwanie na adresie [::] przez proces `caddy`.\n- Inne porty TCP (1515, 1514, 43951, 55000) nasłuchują lokalnie na różnych interfejsach.\n\n#### 2. Weryfikacja detekcji\n\nSkan nmap nie wygenerował żadnych alertów w systemie detekcji (np. Suricata/Wazuh). Brak oznaczeń ryzykownych działań lub potencjalnie niebezpiecznych sygnałów.\n\n### Podsumowanie problemów bezpieczeństwa\n\nZe względu na brak danych z check_firewall, nie można ocenić rzeczywistej ekspozycji tych portów do sieci zewnętrznej. Każda usługa nasłuchująca na adresie 0.0.0.0 lub [::] potencjalnie może być dostępna z internetu, ale to wymaga dodatkowej weryfikacji.\n\n### Wniosek\n\nAby ocenić rzeczywiste ryzyko związane z ekspozycją portów, należy wykonać dodatkowy skan z check_firewall lub pełny audyt (full_audit). Bez tych danych nie można stwierdzić, czy usługi są dostępne dla sieci zewnętrznej.\n\n### Rozbieżności wykryte między modelami\n\n- Model SpeakLeash/bielik-11b-v3.0-instruct wymyślił, że port 2847/tcp jest ryzykowny bez dodatkowych danych o firewallu.\n- Wszystkie modele poprawnie zidentyfikowały usługi nasłuchujące na localhost, ale nie mogły ocenić ich ekspozycji do sieci zewnętrznej.\n\n---\n\n::finding[low]{concern=\"hidden_endpoints_suspected\" title=\"Może istnieć ukryty katalog/panel/plik\"}\nPort 80/tcp nasłuchuje na adresie [::], co może wskazywać na potencjalny ukryty endpoint.\n::\n\n::finding[medium]{concern=\"open_web_service\" title=\"Dostępna usługa HTTP/HTTPS\"}\nPort 80/tcp nasłuchuje na adresie [::] przez proces `caddy`, co może oznaczać dostępność usługi HTTP/HTTPS z internetu.\n::"
+  },
+  {
+    "name": "whatweb_dvwa",
+    "status": "PASS",
+    "duration": 309.4,
+    "ground_truth_must_contain": [
+      "Apache",
+      "DVWA"
+    ],
+    "ground_truth_must_not_contain": [
+      "nginx"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza Technologii Działających na http://192.168.0.110:8081\n\nNarzędzie `whatweb_scan` zostało wykonane 5 razy z parametrami skierowanymi do adresu `http://192.168.0.110:8081`. Oto szczegółowe wyniki:\n\n#### Adres http://192.168.0.110:8081\n- **Status**: 302 Found\n- **Technologie wykryte**:\n  - Apache (wersja 2.4.25)\n  - Cookies (PHPSESSID, security)\n  - Country (RESERVED ZZ)\n  - HTTPServer (Debian Linux Apache/2.4.25 (Debian))\n  - IP (192.168.0.110)\n  - RedirectLocation (login.php)\n\n#### Adres http://192.168.0.110:8081/login.php\n- **Status**: 200 OK\n- **Technologie wykryte**:\n  - Apache (wersja 2.4.25)\n  - Cookies (PHPSESSID, security)\n  - Country (RESERVED ZZ)\n  - DVWA (Damn Vulnerable Web Application v1.10 *Development*)\n  - HTTPServer (Debian Linux Apache/2.4.25 (Debian))\n  - IP (192.168.0.110)\n  - PHP\n  - PasswordField (password)\n  - Title (Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*)\n\n### Problemy Bezpieczeństwa\n\n- **Wysokie ryzyko**: Serwer `http://192.168.0.110:8081` przekierowuje do strony logowania `login.php`, która używa technologii PHP i Damn Vulnerable Web Application (DVWA). DVWA to aplikacja testowa zawierająca wiele luk bezpieczeństwa, co może stanowić ryzyko w przypadku dostępności z internetu.\n- **Niskie ryzyko**: Technologia Apache 2.4.25 działa na Debian Linux i obsługuje żądania HTTP.\n\n### Weryfikacja Detekcji (Wazuh/Suricata)\n\nNie ma dostarczonych informacji o weryfikacji detekcji za pomocą narzędzi Wazuh lub Suricata w surowych danych.\n\n### Znaczące Ustalenia\n::finding[high]{concern=\"web_app_present\" title=\"Aplikacja testowa DVWA\"}\nSerwer hostuje aplikację Damn Vulnerable Web Application (DVWA) v1.10, która jest często używana do celów edukacyjnych i testowych, ale może stanowić ryzyko w przypadku dostępności z internetu.\n::\n\n### Rozbieżności wykryte między modelami\n- Model SpeakLeash/bielik-11b-v3.0-instruct:Q5_K_M podał niepotwierdzoną informację o konfiguracji serwera jako środowisko testowe, co jest niewymagane w kontekście surowych danych.\n- Wszystkie modele były zgodne ze źródłem w kwestii technologii wykrytych na adresie http://192.168.0.110:8081 i jego podstronach.\n\nRaport nie zawiera dodatkowych informacji o konfiguracji firewalla, które byłyby niezbędne do określenia rzeczywistej dostępności serwera z internetu."
+  }
+]

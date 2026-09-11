@@ -1,0 +1,18 @@
+[
+  {
+    "name": "stealth_scan_detection",
+    "status": "PASS",
+    "duration": 309.8,
+    "ground_truth_must_contain": [
+      "8080"
+    ],
+    "ground_truth_must_not_contain": [
+      "jest dostępny z internetu",
+      "jest otwarty na świat",
+      "KRYTYCZNE ryzyko"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Finalny Raport\n\n#### Wynik Nmap Stealth Scan na 192.168.0.110\n\nNarzędzie `nmap_stealth_scan` zostało wykonane z poleceniem:\n```\nnmap -sS -Pn -T2 --top-ports 30 --open 192.168.0.110\n```\n\nWyniki skanu pokazują, że na adresie IP `192.168.0.110` jest otwarty jeden port:\n- **Port:** 8080/tcp (usługa: http-proxy)\n\n#### Weryfikacja Detekcji\n\nSkanowanie wywołało wiele alertów Suricata, głównie związane z STUN Binding Request/Response oraz podejrzane wejściowe ruchy do portu MySQL 3306. Oto podsumowanie:\n\n- **STUN Binding Alerts:**\n  - Rule ID: 86601\n  - Level: 3 (Informacyjny)\n  - Opis: Sesja Przejścia Użytkowników dla NAT (STUN) binding request/response.\n  \n- **MySQL Port Scanning Alerts:**\n  - Rule ID: 86601\n  - Level: 3 (Informacyjny)\n  - Opis: Podejrzane wejściowe ruchy do portu MySQL 3306.\n\n### Analiza i Wnioski\n\n#### Porty Otwarte przez Nmap\n- **Port:** 8080/tcp (usługa: http-proxy)\n\n#### Alerty Suricata\n1. **STUN Binding Alerts**\n   - Informacyjne alerty dotyczące STUN protocol, które są typowe dla VoIP i video konferencji.\n   \n2. **MySQL Port Scanning Alerts**\n   - Podejrzane wejściowe ruchy do portu MySQL 3306 mogą wskazywać na próbę nieautoryzowanego dostępu lub skanowanie.\n\n### Rekomendacje\n\n1. **Monitoruj STUN Traffic:**\n   - Sprawdź, czy ruch STUN alignuje się z oczekiwanymi konfiguracjami i wzorcami użycia sieci.\n   \n2. **Badaj MySQL Port Scans:**\n   - Upewnij się, że zapory i kontrole dostępu są odpowiednio skonfigurowane do zapobiegania nieautoryzowanemu dostępowi.\n\n3. **Tuning Suricata:**\n   - Sprawdź, czy reguły i sygnatury Suricata są aktualne z najnowszymi feedami informacji o zagrożeniach.\n   \n4. **Analiza Logów:**\n   - Zbadaj logi w poszukiwaniu wzorców lub trendów, które mogłyby wskazywać na kontynuowane ataki lub wrażliwe punkty.\n\n### Rozbieżności wykryte między modelami\n\n- **Model qwen2.5-coder:14b** i **qwen2.5:14b** podały niepoprawną ilość alertów Suricata, co jest sprzeczne z surowymi danymi.\n  \n- **SpeakLeash/bielik-11b-v3.0-instruct:Q5_K_M** poprawnie opisał sytuację bez dodatkowych halucynacji.\n\n::finding[medium]{concern=\"open_web_service\" title=\"Otwarty port HTTP Proxy\"}\nPort 8080/tcp jest otwarty i służy do usługi http-proxy, co może być potencjalnym wektorem ataku.\n::\n  \n::finding[low]{concern=\"detection_untested\" title=\"Niezweryfikowana detekcja\"}\nAlerty Suricata dotyczące STUN i MySQL portu 3306 wymagają dalszej weryfikacji, aby upewnić się o ich prawdziwości.\n::"
+  }
+]

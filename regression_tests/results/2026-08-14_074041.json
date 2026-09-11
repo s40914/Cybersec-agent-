@@ -1,0 +1,143 @@
+[
+  {
+    "name": "audyt_fail2ban",
+    "status": "FAIL",
+    "duration": 132.5,
+    "ground_truth_must_contain": [
+      "active"
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [
+      "active"
+    ],
+    "forbidden_phrases_found": [],
+    "full_report": "Na podstawie surowych danych i analizy trzech różnych szkiców raportu, oto finalny raport po polsku:\n\n### Status Fail2Ban\n\n- **Status usługi fail2ban**: aktywny\n- **Aktualnie zbanowane IP (jail sshd)**: 0\n- **Łączna liczba zbanowanych IP od startu (jail sshd)**: 0\n- **Aktualnie nieudane próby logowania (jail sshd)**: 0\n- **Łączna liczba nieudanych prób logowania (jail sshd)**: 0\n\n### Problemy bezpieczeństwa\n\nNie wykryto żadnych problemów bezpieczeństwa związanych z fail2ban. Wszystkie parametry są w normie i nie występują żadne błędy lub awarie.\n\n### Podsumowanie\n\nFail2ban działa prawidłowo i nie wykrywa żadnych niebezpiecznych prób logowania SSH. System jest bezpieczny w zakresie monitorowania i blokady potencjalnie szkodliwych adresów IP.\n\n### Zalecenia\n- Kontynuuj regularne skanowanie i monitoring usługi SSH (port 22) pod kątem prób nieautoryzowanego dostępu.\n- Sprawdź, czy reguły firewalla blokują ruch na porcie 22 z adresów spoza sieci lokalnej/VPN Tailscale (jeśli to konieczne).\n\n### Rozbieżności wykryte między modelami\nNie wykryto rozbieżności między modelami. Wszystkie szkice były zgodne ze surowymi danymi.\n\nW tym raporcie nie ma istotnych ustaleń wymagających dodatkowego bloku ::finding, ponieważ wszystkie parametry fail2ban są w normie i nie wykryto żadnych zagrożeń."
+  },
+  {
+    "name": "audyt_ssh",
+    "status": "PASS",
+    "duration": 172.8,
+    "ground_truth_must_contain": [
+      "2847",
+      "yes"
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza konfiguracji SSH\n\n**Konfiguracja SSH:**\n- Port SSH: 2847\n- PasswordAuthentication: yes\n- PermitRootLogin: prohibit-password\n- PubkeyAuthentication: yes\n- MaxAuthTries: 6\n- X11Forwarding: yes\n- AllowTcpForwarding: yes\n\n**Problem zabezpieczeń:**\n- Ustawienie `PasswordAuthentication: yes` pozwala na logowanie się za pomocą hasła, co może zwiększyć podatność na ataki brute-force. Należy rozważyć wyłączenie tego parametru lub włączenie dodatkowych mechanizmów ochrony, takich jak fail2ban.\n\n**Ograniczenia:**\n- Brak informacji o statusie i konfiguracji fail2ban.\n- Nie ma danych na temat otwartych portów firewalla (UFW), dlatego nie można ocenić rzeczywistej dostępności portu SSH z zewnątrz.\n\n**Rekomendacje:**\n1. Wyłączyć `PasswordAuthentication` i umożliwić tylko logowanie za pomocą kluczy publicznych.\n2. Włączyć fail2ban lub inny mechanizm ochrony przed atakami brute-force.\n3. Sprawdzić konfigurację firewalla (UFW), aby upewnić się, że port 2847 jest odpowiednio zabezpieczony i dostępny tylko w bezpiecznych warunkach.\n\n**Podsumowanie:**\nKonfiguracja SSH zawiera ustawienia, które mogą zwiększać ryzyko ataków brute-force. Należy podjąć działania, aby zminimalizować te zagrożenia, szczególnie jeśli port SSH jest dostępny z zewnątrz sieci lokalnej lub VPN.\n\n::finding[medium]{concern=\"weak_auth_candidate\" title=\"Logowanie hasłem włączone\"}\nUstawienie `PasswordAuthentication: yes` pozwala na logowanie się za pomocą hasła, co może zwiększyć podatność na ataki brute-force. Należy rozważyć wyłączenie tego parametru lub włączenie dodatkowych mechanizmów ochrony.\n::\n\n### Rozbieżności wykryte między modelami\n- Model qwen2.5-coder:14b podał niekompletną ocenę ryzyka, sugerując wyłączenie `X11Forwarding` bez konkretnych argumentów dla tej zmiany.\n- Model SpeakLeash/bielik-11b-v3.0-instruct:Q5_K_M poprawnie zidentyfikował ryzyko związane z ustawieniem `PasswordAuthentication`, ale sugeruje zmniejszenie `MaxAuthTries` do 3, co jest opcjonalne i niekonieczne dla bezpieczeństwa.\n- Model qwen2.5:14b poprawnie opisał konfigurację SSH bez dodatkowych halucynacji lub błędów.\n\nWszystkie modele były zgodne ze źródłowymi danymi w podstawowym opisie konfiguracji i ryzyku, ale niektóre sugerowały niekonieczne zmiany lub brakowały szczegółów."
+  },
+  {
+    "name": "audyt_updates",
+    "status": "FAIL",
+    "duration": 143.0,
+    "ground_truth_must_contain": [
+      "83"
+    ],
+    "ground_truth_must_not_contain": [
+      "brak zaległości",
+      "brak aktualizacji"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [
+      "brak aktualizacji"
+    ],
+    "full_report": "### Raport diagnostyczny - Sprawdzenie dostępnych aktualizacji systemu\n\n**Status narzędzia:**\nNarzędzie `check_updates` zostało wykonane **1 raz** i zwróciło status \"ok\".\n\n**Dostępne aktualizacje:**\n- **Liczba wszystkich dostepnych aktualizacji (total_upgradable):** 83\n- **Liczba aktualizacji bezpieczenstwa (security_updates_count):** 0\n- **Lista aktualizacji bezpieczeństwa:** Pusta (`security_updates = []`)\n- **Liczba pozostalych aktualizacji (other_updates_count):** 83\n\n**Problem bezpieczeństwa:**\nBrak aktualizacji bezpieczenstwa na liscie. Jest to potencjalne zagrożenie, ponieważ system może być narażony na znane luk w zabezpieczeniach, które nie zostały jeszcze rozwiązane.\n\n**Rekomendacje:**\n1. **Zainstaluj wszystkie dostępne aktualizacje:** Wszystkie 83 aktualizacje powinny zostać zainstalowane jak najszybciej, aby zapewnić bezpieczeństwo systemu.\n2. **Monitoruj regularnie dostępność aktualizacji bezpieczenstwa:** Upewnij się, że system jest automatycznie aktualizowany i monitoruj regularnie listę aktualizacji bezpieczenstwa, aby uniknąć narażenia na nowe luki.\n\n**Weryfikacja detekcji (Wazuh/Suricata):**\nBrak informacji o wykryciu przez system IDS/IPS. Wszystkie dostępne aktualizacje zostały sprawdzone bez zgłaszania anomalii przez system monitoringu bezpieczeństwa.\n\n::finding[medium]{concern=\"outdated_software\" title=\"Brak aktualizacji bezpieczeństwa\"}\nSystem nie wymaga natychmiastowych aktualizacji dotyczących bezpieczeństwa, ale jest narażony na znane luki w zabezpieczeniach.\n::\n\n### Rozbieżności wykryte między modelami\n- Model qwen2.5:14b podał niepoprawne informacje o braku konieczności natychmiastowych aktualizacji, co jest nieprawdziwe w kontekście bezpieczeństwa.\n\n---\n\nWszystkie szkice były zgodne ze źródłem danych, ale jedno z nich zawierało niespójność w ocenie ryzyka."
+  },
+  {
+    "name": "audyt_users",
+    "status": "PASS",
+    "duration": 130.5,
+    "ground_truth_must_contain": [],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza Użytkowników Systemowych\n\n#### Wyniki Głównego Narzędzia (list_users) - status: ok, wywołane 1 raz\n- **Liczba użytkowników (human_users):** 1\n- **Lista użytkowników:**\n  - `repas` (UID=1000, katalog domowy: `/home/repas`, powłoka: `/bin/bash`)\n- **Członkowie grupy sudo:** `repas`\n\n### Podsumowanie Bezpieczeństwa:\n- Użytkownik `repas` jest członkiem grupy sudo, co oznacza możliwość wykonywania poleceń z uprawnieniami administratora. To standardowa konfiguracja i nie stanowi bezpośredniego ryzyka, jeśli użytkownik jest zaufany.\n- Brak innych użytkowników w systemie (np. `root`, `ubuntu`), co minimalizuje powierzchnię ataku.\n\n### Zalecenia:\n- Regularnie przeglądaj listę członków grupy sudo i usuwaj niepotrzebne konta z tych uprawnieni.\n- Monitoruj aktywność użytkownika `repas` pod kątem podejrzanych działań (np. próby dostępu do wrażliwych plików).\n\n### Brak Wykrytych Problemów Bezpieczeństwa W Kontekście Listy Użytkowników.\n\n---\n\n::finding[low]{concern=\"weak_auth_candidate\" title=\"Członek grupy sudo\"}\nUżytkownik `repas` jest członkiem grupy sudo, co oznacza możliwość wykonywania poleceń z uprawnieniami administratora. To standardowa konfiguracja i nie stanowi bezpośredniego ryzyka, jeśli użytkownik jest zaufany.\n::\n\n### Rozbieżności Wykryte Miedzy Modelami\n- Brak rozbieżności wykrytych między modelami.\n\nWszystkie szkice były zgodne ze surowymi danymi i nie zawierały błędnych informacji."
+  },
+  {
+    "name": "scan_ports_localhost",
+    "status": "FAIL",
+    "duration": 241.0,
+    "ground_truth_must_contain": [
+      "25",
+      "53",
+      "68",
+      "80",
+      "323",
+      "514",
+      "1514",
+      "1515",
+      "2019",
+      "2847",
+      "3001",
+      "5353",
+      "8010",
+      "8080",
+      "8081",
+      "8082",
+      "8083",
+      "8501",
+      "8765",
+      "8766",
+      "9200",
+      "9443",
+      "11434",
+      "41641",
+      "43951",
+      "50830",
+      "55000",
+      "64146"
+    ],
+    "ground_truth_must_not_contain": [
+      "dostępny z internetu",
+      "otwarty na świat",
+      "KRYTYCZNE"
+    ],
+    "missing_required_phrases": [
+      "25",
+      "53",
+      "68",
+      "80",
+      "323",
+      "514",
+      "1514",
+      "1515",
+      "2019",
+      "2847",
+      "3001",
+      "5353",
+      "8010",
+      "8080",
+      "8081",
+      "8082",
+      "8083",
+      "8501",
+      "8765",
+      "8766",
+      "9200",
+      "9443",
+      "11434",
+      "41641",
+      "43951",
+      "50830",
+      "55000",
+      "64146"
+    ],
+    "forbidden_phrases_found": [],
+    "full_report": "### Raport diagnostyczny bezpieczeństwa (SecOps) dla domowego serwera\n\n#### 1. Wyniki skanu portów Nmap - podstawowy raport\n- **Narzędzie:** `scan_nmap` (wywołane **2 razy**)\n- **Komenda:** `nmap -sV -T4 --open 127.0.0.1`\n- **Czas skanu:** ~0.24 sekundy (pierwsze wywołanie), ~0.22 sekundy (drugie wywołanie)\n- **Wyniki:**\n  - Brak otwartych portów na localhost.\n  - System operacyjny nie został rozpoznany, ponieważ brak otwartych portów.\n\n#### 2. Wyniki skanu Nmap w poszukiwaniu podatności (vuln_scan)\n- **Narzędzie:** `nmap_vuln_scan` (wywołane **2 razy**)\n- **Komenda:** `nmap -sV --script vuln -T4 --open 127.0.0.1`\n- **Czas skanu:** ~10.28 sekundy (pierwsze wywołanie), ~10.23 sekundy (drugie wywołanie)\n- **Wyniki:**\n  - Brak zidentyfikowanych podatności w skanowanych usługach.\n  \n#### 3. Analiza firewalla\n- W surowych danych brak informacji o regułach firewalla (UFW). Nie można określić aktualnej konfiguracji zapory.\n\n#### 4. Ocena ryzyka na podstawie skanów Nmap\n- Brak otwartych portów na localhost, co oznacza brak ekspozycji zewnętrznej.\n  \n#### 5. Weryfikacja detekcji (Suricata/Wazuh – brak danych)\n- Brak sekcji dotyczącej alertów IDS/IPS w surowych danych.\n\n### Podsumowanie i zalecenia\n- **Stan bezpieczeństwa:** Skan portów na localhost nie wykrył żadnych otwartych usług ani podatności.\n- **Kluczowe luki w danych:** Brak informacji o regułach firewalla uniemożliwia pełną ocenę ekspozycji portów.\n- **Zalecenia:**\n  - Wykonaj pełny audyt konfiguracji UFW (`ufw status`).\n  \n### Rozbieżności wykryte między modelami\n- Model SpeakLeash/bielik-11b-v3.0-instruct wymyślił usługi SSH, HTTP i SNMP na localhost, co nie ma podstaw w surowych danych.\n- Model qwen2.5-coder:14b stwierdził błąd skanu nmap_stealth_scan, który nie był wykonywany.\n\n::finding[low]{concern=\"hidden_endpoints_suspected\" title=\"Brak otwartych portów\"}\nSkanowanie portów na localhost nie wykazało żadnych otwartych usług ani podatności. Brak informacji o konkretnych regułach firewalla uniemożliwia pełną ocenę ekspozycji.\n::"
+  },
+  {
+    "name": "whatweb_dvwa",
+    "status": "PASS",
+    "duration": 309.3,
+    "ground_truth_must_contain": [
+      "Apache",
+      "DVWA"
+    ],
+    "ground_truth_must_not_contain": [
+      "nginx"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza Technologii Działających na http://192.168.0.110:8081\n\n#### 1. Strona główna (http://192.168.0.110:8081)\n- **Status**: 302 Found\n- **Technologie wykryte**:\n  - Apache 2.4.25\n  - Cookies: PHPSESSID, security\n  - Country: RESERVED (ZZ)\n  - HTTPServer: Debian Linux Apache/2.4.25 (Debian)\n  - IP: 192.168.0.110\n  - RedirectLocation: login.php\n\n#### 2. Strona logowania (http://192.168.0.110:8081/login.php)\n- **Status**: 200 OK\n- **Technologie wykryte**:\n  - Apache 2.4.25\n  - Cookies: PHPSESSID, security\n  - Country: RESERVED (ZZ)\n  - DVWA (Damn Vulnerable Web Application v1.10 *Development*)\n  - HTTPServer: Debian Linux Apache/2.4.25 (Debian)\n  - IP: 192.168.0.110\n  - PHP\n  - PasswordField: password\n  - Title: Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*\n\n### Problemy Bezpieczeństwa\n\n1. **Wersja Apache**: Serwer korzysta z starszej wersji Apache 2.4.25, która może być podatna na znane luki bezpieczeństwa. Zaleca się uaktualnienie do najnowszej stabilnej wersji.\n   ::finding[medium]{concern=\"outdated_software\" title=\"Starsza wersja Apache\"}\n   Serwer korzysta z starszej wersji Apache 2.4.25, która może być podatna na znane luki bezpieczeństwa.\n   ::\n\n2. **Aplikacja DVWA**: Strona korzysta z Damn Vulnerable Web Application (DVWA), która jest aplikacją testową i nie powinna być używana w środowisku produkcyjnym, szczególnie jeśli dostępna jest publicznie.\n   ::finding[high]{concern=\"web_app_present\" title=\"Obecność aplikacji DVWA\"}\n   Serwer hostuje Damn Vulnerable Web Application (DVWA), która jest aplikacją testową i nie powinna być używana w środowisku produkcyjnym.\n   ::\n\n3. **Cookies bez flagi HttpOnly**: Cookies PHPSESSID i security są widoczne dla skryptów po stronie klienta (nie mają flagi HttpOnly), co może zwiększyć ryzyko ataków CSRF (Cross-Site Request Forgery).\n   ::finding[medium]{concern=\"weak_auth_candidate\" title=\"Cookies bez flagi HttpOnly\"}\n   Cookies PHPSESSID i security nie mają flagi HttpOnly, co może zwiększyć ryzyko ataków CSRF.\n   ::\n\n4. **Brak HTTPS**: Serwer nie korzysta z szyfrowania TLS/SSL, co oznacza, że dane przesyłane między klientem a serwerem mogą być podatne na przechwytywanie.\n\n### Weryfikacja Detekcji (Wazuh/Suricata)\nBrak dostępnych informacji z sekcji \"WERYFIKACJA DETEKCJI\" w surowych danych, więc nie można ocenić, czy system IDS/IPS wykrył ruch związany z tym skanem.\n\n### Rozbieżności Wykryte Miedzy Modelami\n- **Model qwen2.5-coder:14b**: Wskazał błędy w interpretacji danych (np. błędne oceny ryzyka dla technologii Apache i aplikacji DVWA).\n- **Model SpeakLeash/bielik-11b-v3.0-instruct:Q5_K_M**: Podał niepoprawną lokalizację geograficzną jako \"Polska\" (ZZ), co jest błędem.\n  \nWszystkie inne modele były zgodne ze źródłem danych i nie zawierały halucynacji.\n\n---\n\nRaport powyżej zawiera tylko fakty potwierdzone w surowych danych, bez dodatkowych domysłów lub halucynacji."
+  }
+]

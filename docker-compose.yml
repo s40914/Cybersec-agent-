@@ -3,12 +3,16 @@ services:
     build: ./orchestrator
     container_name: cybersec-orchestrator
     restart: unless-stopped
+    volumes:
+      - ./data:/app/data
     environment:
       ADMIN_AGENT_URL: "http://host.docker.internal:8765"
       ADMIN_AGENT_TOKEN: "${ADMIN_AGENT_TOKEN}"
       PENTEST_AGENT_URL: "http://pentest-agent:8766"
       PENTEST_AGENT_TOKEN: "${PENTEST_AGENT_TOKEN}"
       PENTEST_AGENT_TIMEOUT: "1200"
+      PENTEST_ALLOW_RESTRICTED: "${PENTEST_ALLOW_RESTRICTED:-true}"
+      PENTEST_ADMIN_PASSWORD: "${PENTEST_ADMIN_PASSWORD}"
       ADMIN_AGENT_TIMEOUT: "300"
       OLLAMA_BASE_URL: "http://ollama:11434"
       TOOL_MODEL_NAME: "qwen3:14b"
@@ -24,6 +28,8 @@ services:
     build: ./chat-ui
     container_name: cybersec-chat-ui
     restart: unless-stopped
+    volumes:
+      - ./data:/app/data
     depends_on:
       - orchestrator
     environment:
@@ -43,8 +49,11 @@ services:
       PENTEST_AGENT_TOKEN: "${PENTEST_AGENT_TOKEN}"
       PENTEST_AGENT_TIMEOUT: "1200"
       ADMIN_AGENT_TIMEOUT: "300"
+      PENTEST_AUDIT_LOG: "/var/log/pentest-agent/audit.jsonl"
     ports:
       - "127.0.0.1:8766:8766"
+    volumes:
+      - ./pentest-agent-audit-logs:/var/log/pentest-agent
     networks:
       - ai_services_ai_net
   dvwa:
@@ -54,13 +63,16 @@ services:
     ports:
       - "8081:80"
     networks:
-      - ai_services_ai_net
+      ai_services_ai_net:
+        ipv4_address: 172.19.0.50
     volumes:
       - dvwa_mysql_data:/var/lib/mysql
   juice-shop:
     image: bkimminich/juice-shop
     container_name: juice-shop
     restart: unless-stopped
+    volumes:
+      - ./data:/app/data
     ports:
       - "8083:3000"
     networks:

@@ -94,6 +94,10 @@
 
   let threadId = null;
   let selectedTools = new Set();
+
+  // Parametry jawnie wybranych narzędzi.
+  // { tool_name: { param_name: value } }
+  let toolParams = {};
   let allTools = [];
   let activeCategory = "cybersec";
   let modelConfig = null;
@@ -186,6 +190,96 @@
     }
   }
 
+  function renderToolParams(toolName, container) {
+    const tool = allTools.find((t) => t.name === toolName);
+
+    const schema = tool?.args_schema || {};
+    const properties = schema.properties || {};
+    const requiredParams = new Set(schema.required || []);
+
+    if (!tool || Object.keys(properties).length === 0) {
+      container.innerHTML = "";
+      container.classList.add("hidden");
+      return;
+    }
+
+    container.classList.remove("hidden");
+
+    const fields = Object.entries(properties).map(([name, spec]) => {
+      const current =
+        toolParams[toolName] &&
+        toolParams[toolName][name] !== undefined
+          ? toolParams[toolName][name]
+          : (spec.default ?? "");
+
+      const required = requiredParams.has(name) ? " *" : "";
+      const description = spec.description
+        ? `<small class="tool-param-desc">${escapeHtml(spec.description)}</small>`
+        : "";
+
+      const inputType =
+        spec.type === "number" || spec.type === "integer"
+          ? "number"
+          : "text";
+
+      return `
+        <div class="tool-param">
+          <label>
+            <span>${escapeHtml(spec.title || name)}${required}</span>
+            <input
+              type="${inputType}"
+              class="tool-param-input"
+              data-tool="${escapeHtml(toolName)}"
+              data-param="${escapeHtml(name)}"
+              value="${escapeHtml(String(current))}"
+              placeholder="${escapeHtml(spec.default ?? "")}"
+              ${requiredParams.has(name) ? "required" : ""}
+            >
+          </label>
+          ${description}
+        </div>
+      `;
+    }).join("");
+
+    container.innerHTML = `
+      <div class="tool-params-title">Parametry narzędzia</div>
+      ${fields}
+    `;
+
+    container.querySelectorAll(".tool-param-input").forEach((input) => {
+      input.addEventListener("input", () => {
+        const tool = input.dataset.tool;
+        const param = input.dataset.param;
+
+        if (!toolParams[tool]) {
+          toolParams[tool] = {};
+        }
+
+        toolParams[tool][param] = input.value;
+      });
+    });
+  }
+
+  function ensureToolParamsForTarget(toolName, target) {
+    const tool = allTools.find((t) => t.name === toolName);
+    if (!tool || !tool.params || !target) return;
+
+    const targetParam =
+      Object.keys(tool.params).find((name) =>
+        ["target", "ip", "host"].includes(name)
+      );
+
+    if (!targetParam) return;
+
+    if (!toolParams[toolName]) {
+      toolParams[toolName] = {};
+    }
+
+    if (!toolParams[toolName][targetParam]) {
+      toolParams[toolName][targetParam] = target;
+    }
+  }
+
   function renderToolsList() {
     toolsListEl.innerHTML = "";
     const filtered = allTools.filter((t) => (t.category || "cybersec") === activeCategory);
@@ -200,15 +294,31 @@
       row.innerHTML = `
         <input type="checkbox" data-tool="${t.name}">
         <span>
-          <span class="tool-name">${t.name}</span>
-          <span class="tool-desc">${shortDesc}</span>
-        </span>`;
+          <span class="tool-name">${escapeHtml(t.name)}</span>
+          <span class="tool-desc">${escapeHtml(shortDesc)}</span>
+        </span>
+        <div class="tool-params hidden"></div>`;
+
       const cb = row.querySelector("input");
+      const paramsEl = row.querySelector(".tool-params");
+
       cb.checked = selectedTools.has(t.name);
+
+      if (cb.checked) {
+        renderToolParams(t.name, paramsEl);
+      }
+
       cb.addEventListener("change", () => {
-        if (cb.checked) selectedTools.add(t.name);
-        else selectedTools.delete(t.name);
+        if (cb.checked) {
+          selectedTools.add(t.name);
+          renderToolParams(t.name, paramsEl);
+        } else {
+          selectedTools.delete(t.name);
+          paramsEl.innerHTML = "";
+          paramsEl.classList.add("hidden");
+        }
       });
+
       toolsListEl.appendChild(row);
     });
   }
@@ -227,6 +337,13 @@
     toolsListEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
       cb.checked = true;
       selectedTools.add(cb.dataset.tool);
+
+      const row = cb.closest(".tool-item");
+      const paramsEl = row ? row.querySelector(".tool-params") : null;
+
+      if (paramsEl) {
+        renderToolParams(cb.dataset.tool, paramsEl);
+      }
     });
   });
 
@@ -234,6 +351,14 @@
     toolsListEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
       cb.checked = false;
       selectedTools.delete(cb.dataset.tool);
+
+      const row = cb.closest(".tool-item");
+      const paramsEl = row ? row.querySelector(".tool-params") : null;
+
+      if (paramsEl) {
+        paramsEl.innerHTML = "";
+        paramsEl.classList.add("hidden");
+      }
     });
   });
 
@@ -492,13 +617,28 @@
     msgDiv.insertAdjacentElement("afterend", box);
 
     box.querySelector(".run-suggested-btn").addEventListener("click", () => {
-      const checked = Array.from(box.querySelectorAll('input[type="checkbox"]:checked'))
-        .map((el) => el.getAttribute("data-tool"));
+      const checked = Array.from(
+        box.querySelectorAll('input[type="checkbox"]:checked')
+      ).map((el) => el.getAttribute("data-tool"));
+
       if (checked.length === 0) return;
+
       selectedTools = new Set(checked);
+
+      // Sugestia pochodzi z raportu, więc wykorzystujemy wcześniej
+      // wykryty target. Nie pytamy LLM o ponowne wybranie celu.
+      if (lastTargetGuess) {
+        checked.forEach((toolName) => {
+          ensureToolParamsForTarget(toolName, lastTargetGuess);
+        });
+      }
+
       box.remove();
+
       const target = lastTargetGuess ? ` na ${lastTargetGuess}` : "";
-      sendMessage(`Przeprowadź weryfikację pentestową narzędziami: ${checked.join(", ")}${target}`);
+      sendMessage(
+        `Przeprowadzam weryfikację pentestową narzędziami: ${checked.join(", ")}${target}`
+      );
     });
   }
 
@@ -530,6 +670,8 @@
           message: text,
           thread_id: threadId,
           selected_tools: selectedTools.size > 0 ? Array.from(selectedTools) : null,
+          tool_params: selectedTools.size > 0 ? toolParams : null,
+          admin_password: window.getAdminPasswordForRequest ? window.getAdminPasswordForRequest() : null,
         }),
       });
       const data = await res.json();
@@ -558,6 +700,8 @@
             renderSuggestions(bubble, status.suggested_tools);
           }
         }
+        // Audyt zakończony — pobieramy aktualny lifecycle Findingów.
+        loadFindings();
       }
     } catch (e) {
       appendErrorMessage(bubble, `Błąd komunikacji z serwerem: ${e.message}`);
@@ -587,7 +731,431 @@
     }
   });
 
+
+  // ============================================================
+  // FINDINGS
+  // ============================================================
+
+  const findingsListEl = document.getElementById("findings-list");
+  const findingsSummaryEl = document.getElementById("findings-summary");
+  const findingsRefreshBtn = document.getElementById("findings-refresh");
+  const findingDetailOverlay = document.getElementById("finding-detail-overlay");
+  const findingDetailTitle = document.getElementById("finding-detail-title");
+  const findingDetailContent = document.getElementById("finding-detail-content");
+  const findingDetailClose = document.getElementById("finding-detail-close");
+
+  let findingsCache = [];
+
+  function findingSeverity(value) {
+    const v = String(value || "").toLowerCase();
+
+    if (
+      v.includes("critical") ||
+      v.includes("kryty")
+    ) return "critical";
+
+    if (
+      v.includes("high") ||
+      v.includes("wysok")
+    ) return "high";
+
+    if (
+      v.includes("medium") ||
+      v.includes("śred") ||
+      v.includes("sred")
+    ) return "medium";
+
+    return "low";
+  }
+
+  function findingSeverityLabel(severity) {
+    return {
+      critical: "CRITICAL",
+      high: "HIGH",
+      medium: "MEDIUM",
+      low: "LOW"
+    }[severity] || String(severity || "UNKNOWN").toUpperCase();
+  }
+
+  function findingSeverityIcon(severity) {
+    return {
+      critical: "🔴",
+      high: "🟠",
+      medium: "🟡",
+      low: "🟢"
+    }[severity] || "⚪";
+  }
+
+  function findingValue(obj, names, fallback = "") {
+    if (!obj || typeof obj !== "object") return fallback;
+
+    for (const name of names) {
+      if (
+        Object.prototype.hasOwnProperty.call(obj, name) &&
+        obj[name] !== null &&
+        obj[name] !== undefined &&
+        obj[name] !== ""
+      ) {
+        return obj[name];
+      }
+    }
+
+    return fallback;
+  }
+
+  function findingId(finding) {
+    return findingValue(
+      finding,
+      ["finding_id", "id", "uuid", "key"],
+      "—"
+    );
+  }
+
+  function findingTitle(finding) {
+    return findingValue(
+      finding,
+      ["title", "name", "summary", "finding"],
+      "Bez tytułu"
+    );
+  }
+
+  function findingDescription(finding) {
+    return findingValue(
+      finding,
+      ["description", "detail", "details", "body", "evidence"],
+      ""
+    );
+  }
+
+  function normalizeFindingsPayload(data) {
+    if (Array.isArray(data)) return data;
+
+    if (data && Array.isArray(data.findings)) {
+      return data.findings;
+    }
+
+    if (data && Array.isArray(data.items)) {
+      return data.items;
+    }
+
+    if (data && Array.isArray(data.results)) {
+      return data.results;
+    }
+
+    return [];
+  }
+
+  function renderFindingsSummary(findings) {
+    if (!findingsSummaryEl) return;
+
+    const counts = {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0
+    };
+
+    findings.forEach((f) => {
+      counts[findingSeverity(
+        findingValue(f, ["severity", "risk", "priority"], "low")
+      )]++;
+    });
+
+    findingsSummaryEl.innerHTML = `
+      <div class="finding-count finding-count-critical">
+        <span>🔴</span><strong>${counts.critical}</strong><small>CRITICAL</small>
+      </div>
+      <div class="finding-count finding-count-high">
+        <span>🟠</span><strong>${counts.high}</strong><small>HIGH</small>
+      </div>
+      <div class="finding-count finding-count-medium">
+        <span>🟡</span><strong>${counts.medium}</strong><small>MEDIUM</small>
+      </div>
+      <div class="finding-count finding-count-low">
+        <span>🟢</span><strong>${counts.low}</strong><small>LOW</small>
+      </div>
+    `;
+  }
+
+  function renderFindingsList(findings) {
+    if (!findingsListEl) return;
+
+    if (!findings.length) {
+      findingsListEl.innerHTML = `
+        <div class="findings-empty">
+          brak Findingów
+        </div>`;
+      return;
+    }
+
+    findingsListEl.innerHTML = findings.map((finding, index) => {
+      const severity = findingSeverity(
+        findingValue(finding, ["severity", "risk", "priority"], "low")
+      );
+
+      const id = findingId(finding);
+      const title = findingTitle(finding);
+
+      return `
+        <button
+          type="button"
+          class="finding-list-item finding-list-${severity}"
+          data-finding-index="${index}">
+          <span class="finding-list-icon">${findingSeverityIcon(severity)}</span>
+          <span class="finding-list-main">
+            <span class="finding-list-id">${escapeHtml(String(id))}</span>
+            <span class="finding-list-title">${escapeHtml(String(title))}</span>
+          </span>
+          <span class="finding-list-severity">${findingSeverityLabel(severity)}</span>
+        </button>
+      `;
+    }).join("");
+
+    findingsListEl.querySelectorAll(".finding-list-item").forEach((el) => {
+      el.addEventListener("click", () => {
+        const index = Number(el.dataset.findingIndex);
+        const finding = findingsCache[index];
+        if (finding) openFindingDetail(finding);
+      });
+    });
+  }
+
+  async function loadFindings() {
+    if (!findingsListEl) return;
+
+    try {
+      findingsListEl.innerHTML =
+        `<div class="findings-loading">ładowanie…</div>`;
+
+      const res = await fetch("/api/findings", {
+        cache: "no-store"
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      findingsCache = normalizeFindingsPayload(data);
+
+      renderFindingsSummary(findingsCache);
+      renderFindingsList(findingsCache);
+    } catch (e) {
+      findingsListEl.innerHTML = `
+        <div class="findings-error">
+          nie można pobrać Findingów
+        </div>`;
+      if (findingsSummaryEl) {
+        findingsSummaryEl.innerHTML = `
+          <div class="findings-error">
+            błąd API
+          </div>`;
+      }
+    }
+  }
+
+  function formatFindingDate(value) {
+    if (!value) return "";
+
+    try {
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return String(value);
+
+      return d.toLocaleString("pl-PL");
+    } catch (e) {
+      return String(value);
+    }
+  }
+
+  function renderPrimitive(value) {
+    if (value === null || value === undefined) return "—";
+
+    if (typeof value === "boolean") {
+      return value ? "tak" : "nie";
+    }
+
+    if (typeof value === "object") {
+      return escapeHtml(JSON.stringify(value, null, 2));
+    }
+
+    return escapeHtml(String(value));
+  }
+
+  function renderLifecycleArray(title, items) {
+    if (!Array.isArray(items) || items.length === 0) {
+      return `
+        <section class="finding-detail-section">
+          <div class="finding-detail-section-title">${escapeHtml(title)}</div>
+          <div class="finding-detail-empty">brak danych</div>
+        </section>`;
+    }
+
+    return `
+      <section class="finding-detail-section">
+        <div class="finding-detail-section-title">
+          ${escapeHtml(title)}
+          <span class="finding-detail-section-count">${items.length}</span>
+        </div>
+        <div class="finding-lifecycle-list">
+          ${items.map((item, index) => {
+            const status = findingValue(
+              item,
+              ["status", "result", "outcome", "state"],
+              ""
+            );
+
+            const date = findingValue(
+              item,
+              ["created_at", "updated_at", "timestamp", "date", "tested_at"],
+              ""
+            );
+
+            const name = findingValue(
+              item,
+              ["name", "title", "type", "method", "assessment"],
+              `#${index + 1}`
+            );
+
+            const score = findingValue(
+              item,
+              ["score", "risk_score", "cvss", "value"],
+              ""
+            );
+
+            return `
+              <div class="finding-lifecycle-item">
+                <div class="finding-lifecycle-head">
+                  <span class="finding-lifecycle-name">
+                    ${escapeHtml(String(name))}
+                  </span>
+                  ${
+                    status
+                      ? `<span class="finding-lifecycle-status">${escapeHtml(String(status))}</span>`
+                      : ""
+                  }
+                </div>
+                ${
+                  date
+                    ? `<div class="finding-lifecycle-date">${escapeHtml(formatFindingDate(date))}</div>`
+                    : ""
+                }
+                ${
+                  score !== ""
+                    ? `<div class="finding-lifecycle-score">score: ${renderPrimitive(score)}</div>`
+                    : ""
+                }
+                <pre class="finding-lifecycle-data">${renderPrimitive(item)}</pre>
+              </div>`;
+          }).join("")}
+        </div>
+      </section>`;
+  }
+
+  function openFindingDetail(finding) {
+    if (!findingDetailOverlay) return;
+
+    const id = findingId(finding);
+    const title = findingTitle(finding);
+    const severity = findingSeverity(
+      findingValue(finding, ["severity", "risk", "priority"], "low")
+    );
+
+    findingDetailTitle.textContent = `${id} — ${title}`;
+
+    const description = findingDescription(finding);
+
+    const validation = findingValue(
+      finding,
+      ["validations", "validation", "validation_results"],
+      []
+    );
+
+    const retests = findingValue(
+      finding,
+      ["retests", "retest", "retest_results"],
+      []
+    );
+
+    const riskAssessments = findingValue(
+      finding,
+      ["risk_assessments", "risk_assessment", "riskAssessments"],
+      []
+    );
+
+    const createdAt = findingValue(
+      finding,
+      ["created_at", "created", "timestamp"],
+      ""
+    );
+
+    findingDetailContent.innerHTML = `
+      <div class="finding-detail-severity finding-detail-severity-${severity}">
+        ${findingSeverityIcon(severity)}
+        <strong>${findingSeverityLabel(severity)}</strong>
+      </div>
+
+      ${
+        description
+          ? `<section class="finding-detail-section">
+              <div class="finding-detail-section-title">OPIS / EVIDENCE</div>
+              <div class="finding-detail-description">${renderPrimitive(description)}</div>
+            </section>`
+          : ""
+      }
+
+      ${
+        createdAt
+          ? `<div class="finding-detail-meta">
+              utworzono: ${escapeHtml(formatFindingDate(createdAt))}
+            </div>`
+          : ""
+      }
+
+      ${renderLifecycleArray("VALIDATION", Array.isArray(validation) ? validation : [validation].filter(Boolean))}
+      ${renderLifecycleArray("RETESTY", Array.isArray(retests) ? retests : [retests].filter(Boolean))}
+      ${renderLifecycleArray("RISK ASSESSMENTS", Array.isArray(riskAssessments) ? riskAssessments : [riskAssessments].filter(Boolean))}
+
+      <section class="finding-detail-section finding-raw-section">
+        <details>
+          <summary>Surowe dane Findinga</summary>
+          <pre class="finding-raw">${escapeHtml(JSON.stringify(finding, null, 2))}</pre>
+        </details>
+      </section>
+    `;
+
+    findingDetailOverlay.classList.remove("hidden");
+  }
+
+  function closeFindingDetail() {
+    if (findingDetailOverlay) {
+      findingDetailOverlay.classList.add("hidden");
+    }
+  }
+
+  if (findingsRefreshBtn) {
+    findingsRefreshBtn.addEventListener("click", loadFindings);
+  }
+
+  if (findingDetailClose) {
+    findingDetailClose.addEventListener("click", closeFindingDetail);
+  }
+
+  if (findingDetailOverlay) {
+    findingDetailOverlay.addEventListener("click", (e) => {
+      if (e.target === findingDetailOverlay) {
+        closeFindingDetail();
+      }
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeFindingDetail();
+    }
+  });
+
   resumeSession();
   loadTools();
   loadModels();
+  loadFindings();
 })();

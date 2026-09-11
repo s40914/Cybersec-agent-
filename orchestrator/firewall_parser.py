@@ -20,6 +20,11 @@ _PRIVATE_CIDR_RE = re.compile(
 )
 _INTERFACE_RE = re.compile(r"\bon (\S+)")
 _TRUSTED_INTERFACES = {"tailscale0", "docker0"}
+# Loopback (127.0.0.0/8 lub IPv6 ::1) - dostep tylko z tej samej maszyny,
+# zaden inny host w sieci (nawet lokalnej) nie moze sie polaczyc. To jest
+# BARDZIEJ restrykcyjne niz prywatny CIDR typu 192.168.0.0/24, wiec nie
+# powinno ladowac sie w koszyku "DO WERYFIKACJI" jako "nietypowy wzorzec".
+_LOOPBACK_RE = re.compile(r"^(127\.\d{1,3}\.\d{1,3}\.\d{1,3}(/\d{1,2})?|::1)$")
 # Kotwiczymy na słowach kluczowych ALLOW IN / DENY IN zamiast liczyć spacje -
 # szerokość kolumn w `ufw status` jest zmienna (zależy od długości najdłuższego
 # wpisu w danych), więc liczba spacji między polami nie jest stała.
@@ -53,6 +58,12 @@ def parse_ufw_rules(stdout: str) -> list[dict]:
             risk, reason = "BRAK", "reguła blokuje ruch, nie stanowi ryzyka"
         elif interface in _TRUSTED_INTERFACES:
             risk, reason = "NISKIE", f"ograniczone do interfejsu {interface}"
+        elif _LOOPBACK_RE.match(from_field):
+            risk, reason = (
+                "NISKIE",
+                "loopback - dostep wylacznie z tej samej maszyny, "
+                "bardziej restrykcyjne niz siec prywatna",
+            )
         elif is_private_cidr:
             risk, reason = "NISKIE", f"ograniczone do sieci prywatnej {from_field}"
         elif action_type == "ALLOW" and from_field.startswith("Anywhere"):

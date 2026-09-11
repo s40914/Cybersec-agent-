@@ -1,0 +1,18 @@
+[
+  {
+    "name": "stealth_scan_detection",
+    "status": "PASS",
+    "duration": 347.6,
+    "ground_truth_must_contain": [
+      "8080"
+    ],
+    "ground_truth_must_not_contain": [
+      "dostępny z internetu",
+      "otwarty na świat",
+      "KRYTYCZNE"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Raport diagnostyczny\n\n#### Wyniki głównego narzędzia (nmap_stealth_scan)\n\nSkan nmap_stealth_scan został wykonany poprawnie na adresie IP 192.168.0.110 z użyciem polecenia `nmap -sS -Pn -T2 --top-ports 30 --open 192.168.0.110`. Oto szczegółowe wyniki:\n\n- Host jest dostępny (latencja: 0.00011s).\n- Nie pokazano 29 zafiltrowanych portów TCP (brak odpowiedzi).\n- Port 8080/tcp jest otwarty i obsługuje usługę http-proxy.\n\n#### Weryfikacja detekcji\n\nSystem IDS/IPS (Suricata) wykrył następujące alerty:\n\n- Czas: 2026-08-15T21:12:55.632+0000\n  - Reguła ID: 86601\n  - Poziom: 3\n  - Opis: \"Suricata: Alert - ET SCAN Suspicious inbound to mySQL port 3306\"\n- Czas: 2026-08-15T21:12:56.206+0000\n  - Reguła ID: 86601\n  - Poziom: 3\n  - Opis: \"Suricata: Alert - ET SCAN Suspicious inbound to mySQL port 3306\"\n- Czas: 2026-08-15T21:14:30.293+0000\n  - Reguła ID: 86601\n  - Poziom: 3\n  - Opis: \"Suricata: Alert - ET SCAN Suspicious inbound to mySQL port 3306\"\n- Czas: 2026-08-15T21:14:30.297+0000\n  - Reguła ID: 86601\n  - Poziom: 3\n  - Opis: \"Suricata: Alert - ET SCAN Suspicious inbound to mySQL port 3306\"\n\n### Podsumowanie\n\n- Wykonano 1 skan nmap_stealth_scan.\n- Port 8080/tcp jest otwarty na serwerze z adresu IP 192.168.0.110 i obsługuje usługę http-proxy.\n\n### Problemy bezpieczeństwa\n\n- Port 8080/tcp jest dostępny lokalnie na serwerze. Rzeczywista dostępność z zewnątrz wymaga weryfikacji przez check_firewall (dane niedostępne w tym wyniku).\n- System IDS/IPS wykrył 4 alerty związane z podejrzanymi ruchami do portu MySQL (3306) w ciągu 15 minut od skanu.\n\n### Wnioski\n\n- Upewnij się, że konfiguracja firewalla jest odpowiednia i ogranicza dostęp do krytycznych usług.\n- Monitoruj regularnie działania systemu IDS/IPS oraz logi bezpieczeństwa, aby wykryć ewentualne podejrzaną aktywność.\n\n::finding[medium]{concern=\"open_web_service\" title=\"Port 8080/tcp jest otwarty\"}\nPort 8080/tcp jest otwarty i obsługuje usługę http-proxy. Rzeczywista dostępność z zewnątrz wymaga weryfikacji przez check_firewall.\n::\n\n### Rozbieżności wykryte między modelami\n\n- Model qwen2.5-coder:14b podał niepotrzebną informację o braku dostępu do portu 3306, co jest niespójne z faktem, że skanowanie skupiło się na innych portach.\n- Model SpeakLeash/bielik-11b-v3.0-instruct:Q5_K_M poprawnie opisał wyniki skanu i wskazał brak dostępu do portów z wyjątkiem 8080/tcp, ale nie uwzględnił alertów systemu detekcji.\n- Model qwen2.5:14b poprawnie opisał wyniki skanu i wskazał brak pełnych danych o regułach firewalla.\n\nWszystkie modele były zgodne ze źródłem w opisie otwartego portu 8080/tcp, ale różnice wystąpiły w interpretacji alertów systemu detekcji i braku dostępu do innych portów."
+  }
+]

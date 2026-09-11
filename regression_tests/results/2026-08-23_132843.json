@@ -1,0 +1,98 @@
+[
+  {
+    "name": "audyt_fail2ban",
+    "status": "PASS",
+    "duration": 223.0,
+    "ground_truth_must_contain": [
+      [
+        "active",
+        "aktywny",
+        "aktywna",
+        "działa"
+      ]
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Finalny Raport Diagnostyczny: Sprawdzenie Statusu Usługi Fail2ban\n\n#### 1. Podsumowanie Wykonanych Narzędzi i Ich Wyników\n- **check_fail2ban**: Wywołane 1 raz, zwróciło dane o stanie usługi.\n\n#### 2. Wyniki dla fail2ban (sshd)\n- **Status usługi**: `active` – usługa działa poprawnie.\n- **Aktualnie zbanowane IP**: 0 – brak aktywnych banów.\n- **Łączna liczba zbanowanych IP od startu**: 0 – żadne adresy nie zostały jeszcze zablokowane.\n- **Aktualnie nieudane próby logowania**: 0 – brak wykrytych ataków w ostatnim czasie.\n- **Łączna liczba nieudanych prób logowania**: 0 – dotychczas nie odnotowano żadnych podejrzanych zdarzeń.\n\n#### 3. Analiza Bezpieczeństwa\n- **Brak aktywnych zagrożeń**: Ponieważ wszystkie liczniki (nieudane próby, zbanowane IP) wynoszą 0, usługa SSH nie była celem ataku ani nie wykryto żadnych podejrzanych aktywności.\n- **Stan usługi fail2ban**: Usługa jest aktywna i gotowa do reagowania na potencjalne zagrożenia w przyszłości.\n\n#### 4. Zalecenia\n- Monitoruj regularnie logi SSH, aby wykryć ewentualne próby ataków.\n- Upewnij się, że konfiguracja fail2ban jest dostosowana do aktualnych potrzeb (np. progi banowania).\n\n#### 5. Dodatkowe Informacje\n- Brak danych z innych narzędzi diagnostycznych (np. nmap, nikto), które mogłyby uzupełnić analizę.\n- Brak alertów z systemu IDS/IPS (Suricata/Wazuh).\n\n### Podsumowanie\nUsługa fail2ban działa poprawnie i nie wykryto żadnych aktywnych zagrożeń dla SSH. System jest bezpieczny w kontekście monitorowania prób logowania, ale zaleca się regularne przeglądy konfiguracji i logów.\n\n### Rozbieżności Wykryte Miedzy Modelami\n- Brak wykrytych rozbieżności między modelami.\n\n::finding[low]{concern=\"detection_untested\" title=\"Brak testowania detekcji\"}\nSystem fail2ban jest aktywny, ale nie ma żadnych zapisanych danych o wykrytym ryzyku. Brakuje potwierdzenia, czy system IDS/IPS wykrywałby takie sytuacje.\n::"
+  },
+  {
+    "name": "audyt_ssh",
+    "status": "PASS",
+    "duration": 248.0,
+    "ground_truth_must_contain": [
+      "2847",
+      "yes"
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "Na podstawie surowych danych i analizy trzech różnych szkiców raportu, oto finalny raport po polsku:\n\n### Analiza konfiguracji SSH\n\n#### Podstawowe ustawienia SSH:\n- **Port**: 2847 (ustawiono na niestandardowy port)\n- **PasswordAuthentication**: yes (logowanie hasłem jest włączone)\n- **PermitRootLogin**: prohibit-password (zalogowanie jako root przez hasło jest zabronione, ale klucz publiczny może być używany)\n- **PubkeyAuthentication**: yes (uwierzytelnianie kluczem publicznym jest włączone)\n- **MaxAuthTries**: 6 (maksymalna liczba prób uwierzytelnienia wynosi 6)\n- **X11Forwarding**: yes (przekazywanie X11 jest włączone)\n- **AllowTcpForwarding**: yes (przekazywanie TCP jest włączone)\n\n#### Problemy bezpieczeństwa:\n- **WYSOKIE ryzyko**: Ustawienie `PasswordAuthentication=yes` oznacza, że logowanie hasłem jest włączone. To zwiększa podatność na ataki brute-force, szczególnie jeśli fail2ban nie jest aktywny lub port SSH jest dostępny z całego internetu.\n- **ŚREDNIE ryzyko**: Port 2847 jest niestandardowy i może być mniej atrakcyjny dla automatycznych skanerów. Jednakże, wymaga weryfikacji czy jest on chroniony przez reguły firewalla.\n- **NISKIE ryzyko**: Uwierzytelnianie kluczem publicznym jest włączone (`PubkeyAuthentication=yes`), co dodatkowo zwiększa bezpieczeństwo.\n\n#### Weryfikacja detekcji (Wazuh/Suricata):\nNie ma informacji o alarmach generowanych przez systemy detekcyjne IDS/IPS podczas tego skanu.\n\n### Zalecenia:\n- Wyłączyć `PasswordAuthentication` i pozostawić tylko `PubkeyAuthentication`.\n- Sprawdzić reguły firewalla, aby upewnić się, że tylko port 2847 (i ewentualnie inne niezbędne usługi) jest otwarty.\n- Wyłączyć `X11Forwarding` i `AllowTcpForwarding`, chyba że są absolutnie konieczne.\n\n::finding[high]{concern=\"weak_auth_candidate\" title=\"Logowanie hasłem włączone\"}\nUstawienie `PasswordAuthentication=yes` zwiększa ryzyko ataków brute-force, szczególnie jeśli port SSH jest dostępny z internetu i nie ma aktywnego fail2ban lub innej mechanizmu blokady adresów IP po wielokrotnych nieudanych próbach logowania.\n::\n\n::finding[medium]{concern=\"detection_untested\" title=\"Brak weryfikacji detekcji\"}\nNie ma informacji o alarmach generowanych przez systemy detekcyjne IDS/IPS podczas tego skanu. Wymaga to dodatkowej weryfikacji.\n::\n\n### Rozbieżności wykryte między modelami:\n- Model `qwen2.5-coder:14b` i `qwen2.5:14b` wymyślały nieistniejące reguły firewalla, co jest halucynacją faktu.\n- Model `SpeakLeash/bielik-11b-v3.0-instruct:Q5_K_M` poprawnie uwzględnił brak informacji o regułach firewalla i zalecił dodatkową weryfikację.\n\nWszystkie modele miały pewne różnice w ocenie ryzyka, ale surowe dane nie zawierały informacji o regułach firewalla, co uniemożliwiało dokładną weryfikację."
+  },
+  {
+    "name": "audyt_updates",
+    "status": "FAIL",
+    "duration": 157.5,
+    "ground_truth_must_contain": [
+      "21"
+    ],
+    "ground_truth_must_not_contain": [
+      "brak zaległości",
+      "nie ma dostępnych aktualizacji",
+      "system jest aktualny",
+      "wszystko zaktualizowane"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [
+      "nie ma dostępnych aktualizacji"
+    ],
+    "full_report": "### Finalny Raport Diagnostyczny\n\n#### Aktualizacje Systemu\n\n**Wyniki głównego narzędzia (check_updates):**\n- Narzędzie `check_updates` zostało wywołane 1 raz.\n- **Łączna liczba dostępnych aktualizacji:** 21\n- **Liczba aktualizacji bezpieczeństwa:** 0\n- **Liczba pozostałych aktualizacji:** 21\n\n**Ocena ryzyka i zalecenia:**\n- Brak konkretnych aktualizacji bezpieczeństwa (`security_updates_count = 0`), co oznacza, że system jest aktualnie chroniony przed znanymi lukami w zabezpieczeniach.\n- Istnieje 21 innych aktualizacji do zainstalowania. Zaleca się ich sprawdzenie i zastosowanie, aby zapewnić optymalną wydajność systemu.\n\n**Podsumowanie:**\nSystem nie ma dostępnych aktualizacji bezpieczeństwa (`security_updates_count = 0`), ale istnieje 21 innych aktualizacji do zainstalowania. Zaleca się ich sprawdzenie i zastosowanie w celu utrzymania optymalnej wydajności systemu.\n\n**Dodatkowe informacje (weryfikacja detekcji):**\nSystem detekcji (np. Wazuh/Suricata) nie wygenerował żadnych alertów związanych z procesem sprawdzania aktualizacji.\n\n---\n\n### Rozbieżności wykryte między modelami\n\nWszystkie modele zgadzają się ze źródłowymi danymi i nie zawierają błędów lub halucynacji."
+  },
+  {
+    "name": "audyt_users",
+    "status": "PASS",
+    "duration": 154.4,
+    "ground_truth_must_contain": [
+      "repas"
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza Użytkowników Systemowych\n\nWyniki narzędzia `list_users` (wywołane 1 raz) pokazują następujące dane:\n\n- **Status wykonania**: SUKCES (potwierdzone w bloku statusu)\n- **Lista użytkowników systemowych**:\n  - **repas** (UID: 1000, katalog domowy: `/home/repas`, powłoka: `/bin/bash`)\n- **Członkowie grupy sudo**:\n  - repas\n\n### Problemy Bezpieczeństwa\n\n- Użytkownik \"repas\" jest członkiem grupy `sudo`, co oznacza, że ma pełne uprawnienia administracyjne na systemie. To może stanowić potencjalny ryzyko, jeśli użytkownik ten nie jest odpowiedzialnie zarządzany lub jeśli jego hasło zostało ukradzione.\n\n### Zalecenia\n1. **Weryfikacja pliku `/etc/sudoers`**: Sprawdź, czy konfiguracja grupy `sudo` jest poprawna i nie zawiera nadmiernych uprawnień.\n2. **Monitorowanie logów sudo**: Upewnij się, że system rejestruje wszystkie wywołania polecenia `sudo`, aby wykryć ewentualne nadużycia.\n3. **Aktualizacja haseł**: Regularnie zmieniaj hasło użytkownika `repas` i innych kont z uprawnieniami administracyjnymi.\n\n### Podsumowanie\nKonfiguracja listy użytkowników systemowych jest poprawna i nie wskazuje na poważne luki w zabezpieczeniach. Jednak zaleca się regularne przeglądy uprawnień, szczególnie dla kont z dostępem administracyjnym (`sudo`).\n\n### Rozbieżności wykryte między modelami\n- Model `qwen2.5:14b` nie wymienił problemów bezpieczeństwa związanych z członkiem grupy sudo, co jest niespójne ze surowymi danymi.\n\n::finding[medium]{concern=\"weak_auth_candidate\" title=\"Użytkownik z uprawnieniami administracyjnymi\"}\nUżytkownik \"repas\" ma pełne uprawnienia administracyjne na systemie poprzez członkostwo w grupie `sudo`. To może stanowić potencjalny ryzyko, jeśli użytkownik ten nie jest odpowiedzialnie zarządzany lub jeśli jego hasło zostało ukradzione.\n::"
+  },
+  {
+    "name": "firewall_exposure_detection",
+    "status": "PASS",
+    "duration": 621.8,
+    "ground_truth_must_contain": [],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "## Raport Analizy Konfiguracji Firewalla\n\n### 1. Reguły Firewalla\n\nOto lista reguł firewalla, które zostały zweryfikowane i klasifikowane pod względem ryzyka:\n\n#### Brak Wysokiego Ryzyka:\n- **Reguły oznaczone jako NISKIE:** Ograniczają dostęp do interfejsów prywatnych lub sieci lokalnej.\n- **Reguły oznaczone jako BRAK:** Blokują ruch, nie stanowią ryzyka.\n\n#### Do Weryfikacji:\n- **2847/tcp ALLOW IN 100.0.0.0/8**: Nietypowy wzorzec reguły wymaga dalszej analizy.\n\n### 2. Nasłuchujące Porty\n\nOto lista portów, które są otwarte dla ruchu przychodzącego:\n\n- **Porty publicznie dostępne (WYSOKIE ryzyko):**\n  - **80/tcp na *:80** (proces: caddy)\n  - **25/tcp na 127.0.0.1:25 i [::1]:25** (proces: master)\n\n- **Porty ograniczone do sieci prywatnych/Tailscale (NISKIE ryzyko):**\n  - **2847/tcp na 0.0.0.0:2847 i [::]:2847** (proces: sshd)\n  - **53/tcp/udp na 127.0.0.54:53, 127.0.0.53%lo:53** (proces: systemd-resolve)\n\n- **Porty wymagające weryfikacji:**\n  - **59644/tcp na 100.85.231.56:59644** (proces: tailscaled)\n  \n### Podsumowanie\n\nW ocenie firewalla nie zidentyfikowano żadnych reguł o wysokim ryzyku. Reguły są głównie ograniczone do interfejsów prywatnych i sieci lokalnej, co jest odpowiednie dla bezpieczeństwa systemu.\n\nReguła 25 (2847/tcp ALLOW IN 100.0.0.0/8) wymaga dalszej weryfikacji ze względu na nietypowy wzorzec reguły. Warto rozważyć, czy ta reguła jest niezbędna i czy nie można ją ograniczyć do mniejszego zakresu adresów IP.\n\n### Rekomendacje\n\n1. **Reguła 25 (2847/tcp ALLOW IN 100.0.0.0/8):** Zasugeruj dalszą weryfikację tej reguły, aby upewnić się, czy jest ona niezbędna i bezpieczna.\n2. **Monitorowanie ruchu:** Kontynuować monitorowanie ruchu na otwartych portach, szczególnie tych, które są dostępne dla publicznego adresu IP (np. 80/tcp).\n3. **Ograniczanie dostępu:**\n   - Ograniczyć dostęp do interfejsów tailscale i docker tylko do wymaganych adresów IP lub podsieci.\n4. **Zamknij porty publiczne:** Zamknąć porty 80/tcp i 25/tcp, jeśli nie są one niezbędne dla funkcjonalności systemu.\n\n### Podsumowanie\n\nRaport zawiera pełną listę reguł firewalla oraz nasłuchujących portów. Wszystkie reguły są klasyfikowane pod względem ryzyka, a niezidentyfikowane reguły wymagające dalszej weryfikacji są oznaczone jako \"DO WERYFIKACJI\"."
+  },
+  {
+    "name": "scan_ports_localhost",
+    "status": "ERROR",
+    "detail": "Nie udało się pobrać ground_truth (admin_agent/scan_ports): [Errno 111] Connection refused"
+  },
+  {
+    "name": "stealth_scan_detection",
+    "status": "ERROR",
+    "detail": "Nie udało się pobrać ground_truth (pentest_agent/nmap_stealth_scan): Client error '403 Forbidden' for url 'http://localhost:8766/run_tool'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+  },
+  {
+    "name": "whatweb_dvwa",
+    "status": "PASS",
+    "duration": 305.2,
+    "ground_truth_must_contain": [
+      "Apache",
+      "DVWA"
+    ],
+    "ground_truth_must_not_contain": [
+      "nginx"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza Technologii Działających na http://192.168.0.110:8081\n\n**Serwer HTTP**: Apache 2.4.25 (Debian Linux)\n- Serwer webowy to Apache wersji 2.4.25, działający na systemie Debian Linux.\n\n**Technologia Językowa**: PHP\n- Serwer obsługuje technologię PHP.\n\n**Aplikacja Webowa**: Damn Vulnerable Web Application (DVWA) v1.10 *Development*\n- Na serwerze działa aplikacja DVWA w wersji rozwojowej 1.10, znana z wielu luk w zabezpieczeniach i używana do celów edukacyjnych.\n\n**Cookies**: PHPSESSID, security\n- Serwer używa dwóch ciasteczek: `PHPSESSID` i `security`.\n\n**Strona Logowania**: login.php\n- Dostępna jest strona logowania pod adresem http://192.168.0.110:8081/login.php.\n\n**Pole Hasła**: password\n- Na stronie logowania znajduje się pole o nazwie \"password\".\n\n### Weryfikacja Detekcji\n\nSystemy detekcyjne IDS/IPS nie wygenerowały żadnych alertów podczas tego skanu. Brak widocznych sygnałów ryzyka w raporcie detekcji.\n\n---\n\n::finding[medium]{concern=\"web_app_present\" title=\"Zidentyfikowana aplikacja webowa DVWA\"}\nAplikacja Damn Vulnerable Web Application (DVWA) w wersji 1.10 *Development* jest dostępna na serwerze.\n::\n\n### Rozbieżności wykryte między modelami\n- Brak rozbieżności wykrytych między modelami.\n\nRaport zawiera kompletną informację o technologiach działających na podanym adresie, bez dodatkowych problemów bezpieczeństwa lub alarmów systemu detekcyjnego."
+  }
+]

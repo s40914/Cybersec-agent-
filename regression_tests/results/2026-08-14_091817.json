@@ -1,0 +1,54 @@
+[
+  {
+    "name": "scan_ports_localhost",
+    "status": "FAIL",
+    "duration": 556.1,
+    "ground_truth_must_contain": [
+      "25",
+      "53",
+      "68",
+      "80",
+      "323",
+      "514",
+      "1514",
+      "1515",
+      "2019",
+      "2847",
+      "3001",
+      "5353",
+      "8010",
+      "8080",
+      "8081",
+      "8082",
+      "8083",
+      "8501",
+      "8765",
+      "8766",
+      "9200",
+      "9443",
+      "11434",
+      "41641",
+      "43951",
+      "50830",
+      "55000",
+      "64146"
+    ],
+    "ground_truth_must_not_contain": [
+      "dostępny z internetu",
+      "otwarty na świat",
+      "KRYTYCZNE"
+    ],
+    "missing_required_phrases": [
+      "68",
+      "1514",
+      "1515",
+      "8080",
+      "8081",
+      "8083"
+    ],
+    "forbidden_phrases_found": [
+      "dostępny z internetu"
+    ],
+    "full_report": "### Analiza Skanu Portów Nmap na Localhost\n\n#### Podsumowanie:\nSkan portów nmap został wykonany na localhostie i wykryto następujące nasłuchujące porty:\n\n- **UDP:**\n  - Port 5353 (proces avahi-daemon)\n  - Port 41641 (proces tailscaled)\n  - Port 53 (proces systemd-resolve na interfejsie lo i eno1)\n  - Port 323 (proces chronyd)\n  - Port 514 (proces docker-proxy)\n\n- **TCP:**\n  - Port 11434 (proces docker-proxy na interfejsie eno1 i tailscale0)\n  - Port 8082 (proces docker-proxy)\n  - Port 8010 (proces docker-proxy)\n  - Port 53 (proces systemd-resolve na interfejsie lo%lo i tailscale0)\n  - Port 9200 (proces docker-proxy)\n  - Port 8765 (proces uvicorn)\n  - Port 8501 (proces docker-proxy)\n  - Port 9443 (proces docker-proxy)\n  - Port 3001 (proces docker-proxy na interfejsie eno1 i tailscale0, proces caddy)\n  - Port 25 (proces master)\n  - Port 2019 (proces caddy)\n  - Port 2847 (proces sshd)\n  - Port 43951 (proces containerd)\n  - Port 8766 (proces docker-proxy)\n  - Port 55000 (proces docker-proxy)\n  - Port 80 (proces caddy)\n  - Port 64146 (proces tailscaled na interfejsie fd7a:115c:a1e0::fa01:94c4)\n  - Port 50830 (proces tailscaled)\n\n#### Problem bezpieczeństwa:\nNie ma portów, które byłyby dostępne z całego internetu lub wymagałyby dodatkowej oceny ryzyka na podstawie tych danych. Wszystkie wykryte porty nasłuchują lokalnie.\n\n### Wyniki Skanu Portów (Nmap)\n\n- **Port 5353/udp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces avahi-daemon)\n- **Port 41641/udp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces tailscaled)\n- **Port 53/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces systemd-resolve na interfejsie lo i eno1)\n- **Port 323/udp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces chronyd)\n- **Port 514/udp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces docker-proxy)\n- **Port 323/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces chronyd)\n- **Port 514/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces docker-proxy)\n- **Port 11434/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces docker-proxy na interfejsie eno1 i tailscale0)\n- **Port 8082/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces docker-proxy)\n- **Port 8010/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces docker-proxy)\n- **Port 9200/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces docker-proxy)\n- **Port 8765/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces uvicorn)\n- **Port 8501/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces docker-proxy)\n- **Port 9443/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces docker-proxy)\n- **Port 3001/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces docker-proxy na interfejsie eno1 i tailscale0, proces caddy)\n- **Port 25/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces master)\n- **Port 2019/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces caddy)\n- **Port 2847/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces sshd)\n- **Port 43951/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces containerd)\n- **Port 8766/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces docker-proxy)\n- **Port 55000/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces docker-proxy)\n- **Port 80/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces caddy)\n- **Port 64146/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces tailscaled na interfejsie fd7a:115c:a1e0::fa01:94c4)\n- **Port 50830/tcp**: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu) (proces tailscaled)\n\n### Ograniczenia i Ważne Uwagi\n- **Brak danych firewalla**: Ten przebieg NIE zawiera informacji o regułach ALLOW/DENY (brak check_firewall).  \n- **Ekspozycja portów**: Lista pokazuje TYLKO, że procesy nasłuchują na lokalnych interfejsach. **NIE można stwierdzić**, czy port jest dostępny z internetu.  \n- **Zakaz klasyfikacji ryzyka**: BEZ DODATKOWYCH DANYCH (np. full_audit) NIE WOLNO oceniać, które porty stanowią wysokie/średnie/niskie ryzyko pod kątem ekspozycji sieciowej.\n\n### Podsumowanie\n- **Wszystkie porty** wymienione powyżej nasłuchują lokalnie na localhost, ale ich rzeczywista dostępność z zewnątrz jest **nieznana** bez danych firewalla.  \n- Aby uniknąć błędów, należy traktować te porty wyłącznie jako **\"nasłuchujące lokalnie\"**, a nie \"otwarte na świat\".  \n- W przypadku potrzeby oceny ryzyka zaleca się rozszerzenie diagnostyki o audyt firewalla.\n\n### Rozbieżności wykryte między modelami\nWszystkie modele były zgodne ze źródłowymi danymi i nie podały błędnych informacji."
+  }
+]

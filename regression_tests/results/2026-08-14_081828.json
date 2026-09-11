@@ -1,0 +1,45 @@
+[
+  {
+    "name": "scan_ports_localhost",
+    "status": "PASS",
+    "duration": 471.9,
+    "ground_truth_must_contain": [
+      "25",
+      "53",
+      "68",
+      "80",
+      "323",
+      "514",
+      "1514",
+      "1515",
+      "2019",
+      "2847",
+      "3001",
+      "5353",
+      "8010",
+      "8080",
+      "8081",
+      "8082",
+      "8083",
+      "8501",
+      "8765",
+      "8766",
+      "9200",
+      "9443",
+      "11434",
+      "41641",
+      "43951",
+      "50830",
+      "55000",
+      "64146"
+    ],
+    "ground_truth_must_not_contain": [
+      "dostępny z internetu",
+      "otwarty na świat",
+      "KRYTYCZNE"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Raport diagnostyczny\n\n#### 1. Wyniki głównego narzędzia: scan_nmap (wywołane 1 raz)\n\nSkan nmap na localhost zwrócił następujące wyniki:\n\n- **UDP:**\n  - Port 5353: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 41641: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 53 (IPv4): Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 53 (IPv6): Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 68: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 323: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 514: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n\n- **TCP:**\n  - Port 11434 (IPv4): Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 8082: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 8010: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 53 (IPv4): Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 9200: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 8765: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 8501: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 9443: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 3001 (IPv4): Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 25: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 2019: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 11434 (IPv6): Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 2847: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 3001 (IPv6): Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 1515: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 1514: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 43951: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 8766: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 50830: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 64146: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 80: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 8083: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 8081: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 8080: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n  - Port 55000: Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n\n#### 2. Weryfikacja detekcji\n\nNie ma dostępnych informacji o weryfikacji detekcji (Wazuh/Suricata) dla tego skanu.\n\n### Podsumowanie problemów bezpieczeństwa:\n- Brak konkretnych portów lub usług, które wymagają natychmiastowej interwencji bez dodatkowych danych z check_firewall.\n\n### Zalecenia:\n- Przeprowadź dodatkowy przebieg z narzędzia `check_firewall` lub `full_audit`, aby uzyskać dokładne informacje o dostępności portów z internetu.\n- Sprawdź, czy usługi nasłuchujące na interfejsach lokalnych (np. 127.0.0.1) są wymagane dla zdalnego dostępu.\n\n### Uwagi końcowe:\nSkan nmap wykazał obecność wielu usług nasłuchujących na różnych interfejsach, ale bez danych z check_firewall nie można stwierdzić rzeczywistej ekspozycji portów z internetu. Wymagane jest dodatkowe badanie, aby określić, które usługi są dostępne z zewnątrz sieci.\n\n::finding[low]{concern=\"hidden_endpoints_suspected\" title=\"Może istnieć ukryty katalog/panel/plik\"}\nPort 80 (HTTP) nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall.\n::\n\n::finding[low]{concern=\"hidden_endpoints_suspected\" title=\"Może istnieć ukryty katalog/panel/plik\"}\nPort 8080 (HTTP) nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall.\n::\n\n::finding[low]{concern=\"hidden_endpoints_suspected\" title=\"Może istnieć ukryty katalog/panel/plik\"}\nPort 8081 (HTTP) nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall.\n::\n\n::finding[low]{concern=\"hidden_endpoints_suspected\" title=\"Może istnieć ukryty katalog/panel/plik\"}\nPort 8082 (HTTP) nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall.\n::\n\n::finding[low]{concern=\"hidden_endpoints_suspected\" title=\"Może istnieć ukryty katalog/panel/plik\"}\nPort 8083 (HTTP) nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall.\n::\n\n::finding[low]{concern=\"hidden_endpoints_suspected\" title=\"Może istnieć ukryty katalog/panel/plik\"}\nPort 8501 (HTTP) nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall.\n::\n\n::finding[low]{concern=\"hidden_endpoints_suspected\" title=\"Może istnieć ukryty katalog/panel/plik\"}\nPort 9200 (HTTP) nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall.\n::\n\n::finding[low]{concern=\"hidden_endpoints_suspected\" title=\"Może istnieć ukryty katalog/panel/plik\"}\nPort 9443 (HTTPS) nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall.\n::\n\n::finding[low]{concern=\"hidden_endpoints_suspected\" title=\"Może istnieć ukryty katalog/panel/plik\"}\nPort 8765 (HTTP) nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall.\n::\n\n::finding[low]{concern=\"hidden_endpoints_suspected\" title=\"Może istnieć ukryty katalog/panel/plik\"}\nPort 8766 (HTTP) nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall.\n::\n\n::finding[low]{concern=\"hidden_endpoints_suspected\" title=\"Może istnieć ukryty katalog/panel/plik\"}\nPort 55000 (HTTP) nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall.\n::\n\n### Rozbieżności wykryte między modelami:\n- Model SpeakLeash/bielik-11b-v3.0-instruct:Q5_K_M podał błędne informacje o dostępności portów bez dodatkowych danych z check_firewall, co jest niepoprawne.\n- Model qwen2.5:14b zawierał błędy w opisie wyników skanu nmap i nie uwzględnił niektórych usług nasłuchujących na localhostie.\n\nWszystkie inne modele były zgodne ze źródłem danych, ale muszą być poprawione w miejscach, gdzie podały niepoprawne oceny ryzyka bez dodatkowych informacji."
+  }
+]

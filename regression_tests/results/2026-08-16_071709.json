@@ -1,0 +1,137 @@
+[
+  {
+    "name": "audyt_fail2ban",
+    "status": "PASS",
+    "duration": 174.7,
+    "ground_truth_must_contain": [
+      [
+        "active",
+        "aktywny",
+        "aktywna",
+        "działa"
+      ]
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Raport o Statusie Usługi Fail2ban\n\n**Status usługi fail2ban:**\nUsługa fail2ban jest aktywna i działa prawidłowo (`service_active: active`).\n\n**Aktualne statystyki dla jail sshd:**\n- Aktualnie zbanowane IP: 0\n- Łączna liczba zbanowanych IP od startu: 0\n- Aktualnie nieudane próby logowania: 0\n- Łączna liczba nieudanych prób logowania: 0\n\n**Podsumowanie:**\nUsługa fail2ban działa poprawnie i nie wykryła żadnych zbanowanych adresów IP ani nieudanych prób logowania. Wszystkie statystyki wskazują na brak aktywności, co sugeruje, że system jest bezpieczny pod kątem wykrywania i blokowania podejrzanych prób dostępu do usługi SSH.\n\n**Weryfikacja detekcji (Wazuh/Suricata):**\nNie ma informacji o alertach z systemu IDS/IPS Wazuh lub Suricata dla tego skanu.\n\n### Rozbieżności wykryte między modelami:\n- Brak rozbieżności w raportach. Wszystkie modele zgadzają się ze surowymi danymi i nie zawierają błędnych informacji.\n\nNie wykryto żadnych problemów bezpieczeństwa."
+  },
+  {
+    "name": "audyt_ssh",
+    "status": "PASS",
+    "duration": 191.5,
+    "ground_truth_must_contain": [
+      "2847",
+      "yes"
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "Na podstawie surowych danych i analizy trzech różnych szkiców raportu, oto finalny raport po polsku:\n\n### Raport diagnostyczny konfiguracji SSH\n\n#### Wyniki konfiguracji SSH\n\n- **Port SSH**: 2847\n- **PasswordAuthentication**: włączone (`yes`)\n- **PermitRootLogin**: zabronione dla konta root (wymagane uwierzytelnienie kluczem lub hasłem, ale konto root nie może się logować bezpośrednio przez SSH za pomocą hasła)\n- **PubkeyAuthentication**: włączone (`yes`)\n- **MaxAuthTries**: 6 prób\n- **X11Forwarding**: włączone (`yes`)\n- **AllowTcpForwarding**: włączone (`yes`)\n\n#### Problemy bezpieczeństwa\n\n1. **Ustawienie `PasswordAuthentication` na \"yes\"**:\n   - Logowanie hasłem jest włączone, co zwiększa podatność na ataki brute-force.\n   \n2. **Port SSH 2847**:\n   - Standardowy port SSH to 22. Użycie niestandardowego portu może zmniejszyć ryzyko ataków, ale wymaga od użytkowników zapamiętania alternatywnego numeru portu.\n\n3. **X11Forwarding i AllowTcpForwarding na \"yes\"**:\n   - Włączone X11 forwarding i TCP forwarding mogą zwiększać ryzyko bezpieczeństwa, szczególnie jeśli serwer jest dostępny z internetu.\n   \n4. **Niestandardowy port (2847)**:  \n   Port SSH 2847 jest otwarty \"Anywhere\" bez ograniczenia do tailscale0 lub prywatnej podsieci.\n\n#### Weryfikacja detekcji\n\nNie ma dostępnych danych z sekcji \"WERYFIKACJA DETEKCJI (Wazuh/Suricata)\" w surowych danych.\n\n### Podsumowanie\nKonfiguracja SSH ma pewne luki, szczególnie związane z ustawieniem `PasswordAuthentication` na \"yes\", co zwiększa ryzyko ataków brute-force. Port 2847 jest otwarty bez ograniczeń, co stanowi priorytet do dalszej optymalizacji.\n\n::finding[high]{concern=\"weak_auth_candidate\" title=\"Logowanie hasłem włączone\"}\nUstawienie `PasswordAuthentication` na \"yes\" zwiększa ryzyko ataków brute-force.\n::\n\n::finding[medium]{concern=\"hidden_endpoints_suspected\" title=\"Port otwarty 'Anywhere'\"}\nPort SSH 2847 jest otwarty bez ograniczeń, co może być wektorem ataku z internetu.\n::"
+  },
+  {
+    "name": "audyt_updates",
+    "status": "PASS",
+    "duration": 217.1,
+    "ground_truth_must_contain": [
+      "87"
+    ],
+    "ground_truth_must_not_contain": [
+      "brak zaległości",
+      "nie ma dostępnych aktualizacji",
+      "system jest aktualny",
+      "wszystko zaktualizowane"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Finalny Raport Diagnostyczny\n\n**Stan Aktualizacji Systemu:**\n\n- Liczba wszystkich dostępnych aktualizacji (total_upgradable): 87\n- Liczba aktualizacji bezpieczeństwa (security_updates_count): 0\n- Liczba pozostałych aktualizacji (other_updates_count): 87\n\n**Podsumowanie:**\nSystem nie wymaga aktualizacji związanych z bezpieczeństwem. Dostępne są jednak 87 innych aktualizacje, które mogą zawierać poprawki błędów lub nowe funkcje.\n\n**Zalecenia:**\n- Zaleca się przeprowadzenie przeglądu dostępnych aktualizacji i wdrożenie niezbędnych zmian w celu utrzymania systemu na najnowszych poziomach funkcjonalności i zgodności.\n- Regularnie sprawdzaj dostępność aktualizacji, aby utrzymać system w dobrym stanie.\n\n**Status wykonania narzędzi:**\nNarzędzie `check_updates` zostało wywołane 1 raz i zwróciło powyższe wyniki.\n\n::finding[low]{concern=\"outdated_software\" title=\"Dostępne aktualizacje\"}\nSystem posiada dostępne 87 aktualizacji, które mogą zawierać poprawki błędów lub nowe funkcje. Rekomenduje się ich zainstalowanie.\n::\n\n### Rozbieżności wykryte między modelami\nWszystkie modele były zgodne ze źródłowymi danymi i nie podały żadnych błędnego informacji."
+  },
+  {
+    "name": "audyt_users",
+    "status": "PASS",
+    "duration": 155.3,
+    "ground_truth_must_contain": [
+      "repas"
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza użytkowników systemowych\n\n**Liczba użytkowników (human_users): 1**\n\n- **repas (uid=1000, home=/home/repas, shell=/bin/bash)**\n\n**Członkowie grupy sudo (sudo_group_members):**\n- repas\n\n### Ocena bezpieczeństwa:\n- Niska liczba użytkowników systemowych (tylko 1 użytkownik), co jest zgodne z dobrymi praktykami bezpieczeństwa.\n- Użytkownik 'repas' ma dostęp do sudo, co może być uzasadnione, ale wymaga monitorowania (np. czy nie jest nadużywany).\n- Brak użytkowników z uprawnieniami root bezpośrednio (co jest standardem bezpieczeństwa).\n\n### Weryfikacja detekcji:\nNie wykryto żadnych alertów w systemie detekcyjnym związanych z listą użytkowników systemowych.\n\n### Podsumowanie:\nKonfiguracja użytkowników jest poprawna, ale zaleca się regularne przeglądy uprawnień sudo. Brak wykrytych poważnych luk w tej sekcji.\n\n::finding[low]{concern=\"weak_auth_candidate\" title=\"Użytkownik 'repas' ma dostęp do sudo\"}\nUżytkownik 'repas' jest członkiem grupy sudo, co wymaga regularnego monitorowania.\n::\n\n### Rozbieżności wykryte między modelami:\nWszystkie modele były zgodne ze surowymi danymi i nie podały błędnych informacji."
+  },
+  {
+    "name": "scan_ports_localhost",
+    "status": "PASS",
+    "duration": 530.7,
+    "ground_truth_must_contain": [
+      "25",
+      "53",
+      "68",
+      "80",
+      "323",
+      "514",
+      "1514",
+      "1515",
+      "2019",
+      "2847",
+      "3001",
+      "5353",
+      "8010",
+      "8080",
+      "8081",
+      "8082",
+      "8083",
+      "8501",
+      "8765",
+      "8766",
+      "9200",
+      "9443",
+      "11434",
+      "41641",
+      "43951",
+      "50830",
+      "55000",
+      "64146"
+    ],
+    "ground_truth_must_not_contain": [
+      "jest dostępny z internetu",
+      "jest otwarty na świat",
+      "KRYTYCZNE ryzyko"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Raport z analizy bezpieczeństwa\n\n#### Weryfikacja liczby wywołań narzędzi w tym przebiegu\n- Narzędzie `scan_nmap` zostało wykonane 1 raz.\n\n#### Znaleziono następujące nasłuchujące porty na hoście:\n\n1. Port 25/tcp na 127.0.0.1:25 (proces: master)\n2. Port 25/tcp na [::1]:25 (proces: master)\n3. Port 53/tcp na 127.0.0.53%lo:53 (proces: systemd-resolve)\n4. Port 53/tcp na 127.0.0.54:53 (proces: systemd-resolve)\n5. Port 53/udp na 127.0.0.54:53 (proces: systemd-resolve)\n6. Port 53/udp na 127.0.0.53%lo:53 (proces: systemd-resolve)\n7. Port 68/udp na 192.168.0.110%eno1:68 (proces: systemd-network)\n8. Port 80/tcp na *:80 (proces: caddy)\n9. Port 323/udp na 127.0.0.1:323 (proces: chronyd)\n10. Port 323/udp na [::1]:323 (proces: chronyd)\n11. Port 514/udp na 0.0.0.0:514 (proces: docker-proxy)\n12. Port 514/udp na [::]:514 (proces: docker-proxy)\n13. Port 1514/tcp na 0.0.0.0:1514 (proces: docker-proxy)\n14. Port 1514/tcp na [::]:1514 (proces: docker-proxy)\n15. Port 1515/tcp na 0.0.0.0:1515 (proces: docker-proxy)\n16. Port 1515/tcp na [::]:1515 (proces: docker-proxy)\n17. Port 2019/tcp na 127.0.0.1:2019 (proces: caddy)\n18. Port 2847/tcp na 0.0.0.0:2847 (proces: sshd)\n19. Port 2847/tcp na [::]:2847 (proces: sshd)\n20. Port 3001/tcp na 127.0.0.1:3001 (proces: docker-proxy)\n21. Port 3001/tcp na 192.168.0.110:3001 (proces: docker-proxy)\n22. Port 3001/tcp na 100.120.148.104:3001 (proces: docker-proxy)\n23. Port 5353/udp na 0.0.0.0:5353 (proces: avahi-daemon)\n24. Port 5353/udp na [::]:5353 (proces: avahi-daemon)\n25. Port 8010/tcp na 127.0.0.1:8010 (proces: docker-proxy)\n26. Port 8080/tcp na 0.0.0.0:8080 (proces: docker-proxy)\n27. Port 8080/tcp na [::]:8080 (proces: docker-proxy)\n28. Port 8081/tcp na 0.0.0.0:8081 (proces: docker-proxy)\n29. Port 8081/tcp na [::]:8081 (proces: docker-proxy)\n30. Port 8082/tcp na 127.0.0.1:8082 (proces: docker-proxy)\n31. Port 8083/tcp na 0.0.0.0:8083 (proces: docker-proxy)\n32. Port 8083/tcp na [::]:8083 (proces: docker-proxy)\n33. Port 8501/tcp na 0.0.0.0:8501 (proces: docker-proxy)\n34. Port 8501/tcp na [::]:8501 (proces: docker-proxy)\n35. Port 8765/tcp na 0.0.0.0:8765 (proces: uvicorn)\n36. Port 8766/tcp na 127.0.0.1:8766 (proces: docker-proxy)\n37. Port 9200/tcp na 0.0.0.0:9200 (proces: docker-proxy)\n38. Port 9200/tcp na [::]:9200 (proces: docker-proxy)\n39. Port 9443/tcp na 0.0.0.0:9443 (proces: docker-proxy)\n40. Port 9443/tcp na [::]:9443 (proces: docker-proxy)\n41. Port 11434/tcp na 192.168.0.110:11434 (proces: docker-proxy)\n42. Port 11434/tcp na 100.120.148.104:11434 (proces: docker-proxy)\n43. Port 11434/tcp na 127.0.0.1:11434 (proces: docker-proxy)\n44. Port 41641/udp na 0.0.0.0:41641 (proces: tailscaled)\n45. Port 41641/udp na [::]:41641 (proces: tailscaled)\n46. Port 43951/tcp na 127.0.0.1:43951 (proces: containerd)\n47. Port 50830/tcp na 100.120.148.104:50830 (proces: tailscaled)\n48. Port 55000/tcp na 0.0.0.0:55000 (proces: docker-proxy)\n49. Port 55000/tcp na [::]:55000 (proces: docker-proxy)\n50. Port 64146/tcp na [fd7a:115c:a1e0::fa01:94c4]:64146 (proces: tailscaled)\n\n#### Klasyfikacja portów\n- Nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu).\n\n### Uwagi:\n- Ten raport zawiera tylko informacje o nasłuchujących portach na hoście. Nie ma dostępu do danych firewalla ani dodatkowych informacji o ekspozycji sieciowej.\n- Aby ocenić rzeczywistą ekspozycję portów, wymagane są dodatkowe dane z check_firewall lub full_audit.\n\n### Rozbieżności wykryte między modelami\nWszystkie szkice były zgodne ze źródłem."
+  },
+  {
+    "name": "stealth_scan_detection",
+    "status": "FAIL",
+    "duration": 235.5,
+    "ground_truth_must_contain": [
+      "8080"
+    ],
+    "ground_truth_must_not_contain": [
+      "dostępny z internetu",
+      "otwarty na świat",
+      "KRYTYCZNE"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [
+      "dostępny z internetu"
+    ],
+    "full_report": "### Raport z analizy bezpieczeństwa\n\n#### Wyniki skanu Nmap Stealth Scan:\n- **Narzędzie:** `nmap_stealth_scan`\n- **Status wykonania:** SUKCES (returncode=0)\n- **Szczegóły skanu:**\n  - Skanowano adres: `192.168.0.110`\n  - Czas trwania: 33.06 sekundy\n  - Wykonane polecenie: `nmap -sS -Pn -T2 --top-ports 30 --open 192.168.0.110`\n  - **Wyniki portów:**\n    - Port `8080/tcp`: OTWARTY (usługa HTTP Proxy)\n\n#### Analiza bezpieczeństwa:\n- **Otwarte porty:**\n  - Port `8080/tcp` jest otwarty i nasłuchuje lokalnie. Nie ma informacji o tym, czy jest dostępny z internetu.\n\n### Weryfikacja detekcji (Wazuh/Suricata):\n- **Liczba alertów:** 6 w oknie czasowym 15 minut.\n- **Kluczowe alerty:**\n  - Alerty dotyczące nieprawidłowego oznaczania czasu pakietów, podejrzanej aktywności w porcie MySQL (3306) oraz nieznanych ethtypów.\n\n#### Zalecenia:\n1. **Weryfikacja firewalla:** Sprawdź konfigurację reguł firewalla dla portu `8080`, aby upewnić się, że jest on zamknięty na zewnątrz.\n2. **Monitorowanie alertów:** Przeanalizuj dokładniej alerty dotyczące skanowania portu MySQL (3306), aby wykluczyć próby ataku.\n\n### Uwagi końcowe:\n- Surowe dane NIE zawierają informacji o konfiguracji firewalla, co uniemożliwia pełną ocenę ekspozycji portów na zewnątrz.\n- Skan Stealth Scan jest kompletny (status: SUKCES), ale może nie wykryć wszystkich usług nasłuchujących na nietypowych adresach lub protokołach.\n\n### Oznaczenia istotnych ustaleń:\n::finding[medium]{concern=\"open_web_service\" title=\"Otwarty port HTTP Proxy\"}\nPort 8080/tcp jest otwarty i nasłuchuje lokalnie, co wymaga dalszej weryfikacji.\n::\n\n### Rozbieżności wykryte między modelami:\n- Niektóre szkice zawierały informacje o tym, że port `8080` nasłuchuje lokalnie (`127.0.0.1`) lub wymaga dalszej weryfikacji przez check_firewall, co jest poprawne, ponieważ surowe dane nie zawierają takich szczegółów.\n- Niektóre szkice sugerowały, że port `8080` może być dostępny z internetu, co jest halucynacją, ponieważ surowe dane NIE potwierdzają tego.\n\nWszystkie szkice były w miarę zgodne ze źródłem danych, ale niektóre zawierały dodatkowe domniemania lub halucynacje."
+  },
+  {
+    "name": "whatweb_dvwa",
+    "status": "PASS",
+    "duration": 303.6,
+    "ground_truth_must_contain": [
+      "Apache",
+      "DVWA"
+    ],
+    "ground_truth_must_not_contain": [
+      "nginx"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza Technologii Działających na http://192.168.0.110:8081\n\n**Wyniki narzędzia `whatweb_scan`:**\n\n- **http://192.168.0.110:8081**\n  - Status odpowiedzi: [302 Found]\n  - Serwer HTTP: Apache/2.4.25 (Debian)\n  - Technologie wykryte:\n    - Apache\n    - Cookies: PHPSESSID, security\n    - Country: ZZ\n    - RedirectLocation: login.php\n\n- **http://192.168.0.110:8081/login.php**\n  - Status odpowiedzi: [200 OK]\n  - Serwer HTTP: Apache/2.4.25 (Debian)\n  - Technologie wykryte:\n    - Apache\n    - Cookies: PHPSESSID, security\n    - Country: ZZ\n    - DVWA (Damn Vulnerable Web Application)\n    - PHP\n    - PasswordField: password\n    - Title: Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*\n\n### Podsumowanie Technologii\n\n- **Serwer HTTP**: Apache/2.4.25 (Debian)\n- **Aplikacja webowa**: DVWA (Damn Vulnerable Web Application) wersja 1.10\n- **Język programowania**: PHP\n- **Cechy aplikacji**:\n  - Formularz logowania z polem `password`\n  - Używane ciasteczka: `PHPSESSID`, `security`\n\n### Weryfikacja Detekcji (Wazuh/Suricata)\n\nNarzędzie `whatweb_scan` nie wygenerowało żadnych alertów ani alarmów w systemach detekcji intruzów (IDS/IPS) takich jak Wazuh lub Suricata.\n\n### Zalecenia\n\n- **Sprawdzenie aktualizacji**: Upewnij się, że wersja DVWA jest zaktualizowana do najnowszej wersji produkcyjnej.\n- **Audyt bezpieczeństwa**: Przeprowadź skanowanie pod kątem znanych luk w zabezpieczeniach (np. niezabezpieczone formularze logowania, słabe uwierzytelnianie).\n- **Konfiguracja serwera**: Sprawdź, czy Apache jest skonfigurowany poprawnie i czy nie ma niepotrzebnych funkcji ułatwiających ataki.\n\n### Informacje Dodatkowe\n\n- **IP Serwera**: 192.168.0.110 (prawdopodobnie sieć lokalna)\n- **Brak zagrożeń wykrytych przez whatweb_scan**: Narzędzie nie zgłosiło bezpośrednich zagrożeń, ale sama obecność DVWA wskazuje na potencjalne ryzyko, jeśli aplikacja nie jest odpowiednio zabezpieczona.\n\n### Status Wykonania Narzędzi\n\nWszystkie wywołania `whatweb_scan` zakończyły się sukcesem (returncode=0). Łącznie narzędzie zostało użyte **5 razy** w tym przebiegu.\n\n---\n\n::finding[medium]{concern=\"web_app_present\" title=\"Obecność aplikacji webowej DVWA\"}\nAplikacja webowa Damn Vulnerable Web Application (DVWA) wersja 1.10 jest dostępna na adresie http://192.168.0.110:8081.\n::\n::finding[medium]{concern=\"weak_auth_candidate\" title=\"Formularz logowania\"}\nStrona zawiera formularz logowania z polem `password`, co wymaga dalszej weryfikacji pod kątem słabych uwierzytelniania.\n::\n\n### Rozbieżności wykryte między modelami\n\n- **qwen2.5-coder:14b**: Nie zawiera informacji o liczbie wywołań narzędzia `whatweb_scan`.\n- **SpeakLeash/bielik-11b-v3.0-instruct:Q5_K_M**: Zawiera błędną informację o liczbie wywołań narzędzia `whatweb_scan` (5 razy), co jest niezgodne z faktycznymi danymi.\n\nWszystkie inne szkice były zgodne ze źródłem."
+  }
+]

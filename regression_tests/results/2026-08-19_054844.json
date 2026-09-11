@@ -1,0 +1,16 @@
+[
+  {
+    "name": "firewall_exposure_detection",
+    "status": "FAIL",
+    "duration": 518.1,
+    "ground_truth_must_contain": [
+      "11434"
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [
+      "11434"
+    ],
+    "forbidden_phrases_found": [],
+    "full_report": "### Podsumowanie Analizy Portów Nasłuchujących\n\nNa podstawie analizy portów nasłuchujących i reguł firewalla, oto kluczowe punkty:\n\n#### 1. **Porty Bezpieczne**\n- **Porty lokalne**: Wiele portów jest dostępnych tylko na interfejsach loopback (np. `25/tcp`, `323/udp`, `8010/tcp`, `8766/tcp`, `33213/tcp`), co oznacza, że nie są ekspozowane z zewnątrz.\n- **Porty ograniczone do sieci prywatnej**: Porty takie jak `514/udp`, `1514/tcp`, `8080/tcp`, `9200/tcp` są dostępne tylko w sieci lokalnej (np. 192.168.0.0/24), co ogranicza ryzyko ekspozycji.\n\n#### 2. **Porty Do Weryfikacji**\n- **SSH na portach niestandardowych**: Port `2847/tcp` jest nasłuchiwany zarówno lokalnie, jak i zdalnie (100.120.148.104:2847). Zalecane jest dodanie reguły firewalla ograniczającej dostęp do zaufanych adresów IP.\n- **Reguła `2847/tcp ALLOW IN 100.0.0.0/8`**: Ta reguła wymaga dalszej weryfikacji, aby upewnić się, że nie naraża system na ataki.\n\n#### 3. **Porty Do Poprawy**\n- **Ograniczenie dostępu do portów Dockera**: Większość portów Dockera jest otwarta na wszystkich interfejsach (np. `1514/tcp`, `9200/tcp`). Zalecane jest dodanie reguł firewalla ograniczających dostęp tylko do zaufanych adresów IP lub interfejsów.\n\n#### 4. **Porty Bezpieczne**\n- **Porty Tailscale**: Porty takie jak `5353/udp`, `64146/tcp` są dostępne tylko w sieci Tailscale, co ogranicza ryzyko ekspozycji.\n\n### Rekomendacje\n\n1. **Dodanie reguł firewalla dla portów SSH**:\n   - Ogranicz dostęp do portu `2847/tcp` tylko do zaufanych adresów IP.\n   - Weryfikacja i ewentualne ograniczenie dostępu do reguły `2847/tcp ALLOW IN 100.0.0.0/8`.\n\n2. **Ograniczenie dostępu do portów Dockera**:\n   - Dodanie reguł firewalla ograniczających dostęp do portów Dockera tylko do zaufanych adresów IP lub interfejsów.\n\n3. **Monitorowanie i weryfikacja**:\n   - Regularne monitorowanie i weryfikacja otwartych portów oraz reguł firewalla, aby upewnić się o braku niepotrzebnych ekspozycji.\n\n### Podsumowanie Ogólne Ryzyko\n- **Ryzyko ogólne**: NISKIE – brak otwartych portów WYSOKIEGO ryzyka, większość reguł jest ograniczona.\n- **Obszary do poprawy**: Reguła `2847/tcp IN 100.0.0.0/8` oraz ewentualne rozszerzenie blokady SSH na zewnętrzne adresy.\n\n### Zakończenie\nSystem jest w większości dobrze chroniony, ale wymaga kilku poprawek i monitorowania, aby upewnić się o braku niepotrzebnych ekspozycji portów."
+  }
+]

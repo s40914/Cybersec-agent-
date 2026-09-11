@@ -1,0 +1,7 @@
+[
+  {
+    "name": "stealth_scan_detection",
+    "status": "ERROR",
+    "detail": "Nie udało się pobrać ground_truth (pentest_agent/nmap_stealth_scan): Client error '403 Forbidden' for url 'http://localhost:8766/run_tool'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+  }
+]

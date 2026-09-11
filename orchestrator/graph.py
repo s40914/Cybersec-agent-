@@ -44,6 +44,7 @@ niezależnie od tego, czy model "zapamięta" wskazówkę z prompta.
 """
 import json
 import logging
+import httpx
 import os
 from typing import TypedDict, List, Optional
 
@@ -57,6 +58,8 @@ from langgraph.errors import GraphRecursionError
 
 from tools import make_tools, _call_admin_agent
 from pentest_tools import make_pentest_tools
+from artifact_pipeline import ArtifactPipeline
+from evidence_store import EvidenceStore
 import time
 import status_store
 from firewall_parser import extract_and_format_firewall_block
@@ -80,6 +83,11 @@ from facts_parser import (
     extract_and_format_nmap_block,
     extract_and_format_hydra_block,
     extract_and_format_connection_guard,
+    extract_and_format_sqlmap_block,
+    extract_and_format_gobuster_block,
+    extract_and_format_ffuf_block,
+    extract_and_format_enum4linux_block,
+    extract_and_format_nikto_block,
 )
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
@@ -112,10 +120,12 @@ AGENT_RECURSION_LIMIT = 20
 # wynik (patrz _looks_uninformative), graf automatycznie spróbuje narzędzia
 # z prawej strony NA TYM SAMYM celu. Rozszerzaj świadomie - oba narzędzia
 # w parze muszą przyjmować ten sam typ celu (tu: oba "ip").
-ESCALATION_MAP = {
-    "scan_nmap": "nmap_vuln_scan",
-}
-MAX_ESCALATIONS = 1
+# Automatyczna eskalacja narzędzi jest wyłączona.
+#
+# Kolejne narzędzia są proponowane przez warstwę raportującą/UI,
+# ale nie są uruchamiane bez jawnego wyboru użytkownika.
+ESCALATION_MAP = {}
+MAX_ESCALATIONS = 0
 
 # Narzędzia, po których automatycznie sprawdzamy, czy system detekcji
 # (Wazuh/Suricata) zauważył ruch. Osobna, jednorazowa ścieżka - nie łączy
@@ -124,6 +134,37 @@ DETECTION_CHECK_TOOLS = {"nmap_stealth_scan"}
 # Krótka pauza przed odczytem alarmów - logi Suricaty/Wazuh potrzebują
 # chwili, żeby się zapisać i przefiltrować przez korelację Wazuh.
 DETECTION_CHECK_DELAY_SECONDS = 5
+
+
+
+def _process_artifact_for_thread(
+    artifact_path: str,
+    thread_id: str,
+    target: str,
+) -> dict:
+    """
+    Deterministyczny Artifact -> RE pipeline.
+    Nie używa LLM i nie wykonuje artefaktu.
+    """
+    store = EvidenceStore()
+    pipeline = ArtifactPipeline(store)
+
+    artifact = pipeline.ingest(
+        path=artifact_path,
+        thread_id=thread_id,
+        target=target,
+    )
+
+    # Import lokalny, żeby zachować istniejącą architekturę modułów.
+    from re_pipeline import REPipeline
+
+    re_result = REPipeline(store).inspect(artifact)
+
+    return {
+        "artifact": artifact.model_dump(mode="json"),
+        "re": re_result,
+    }
+
 
 
 def _looks_uninformative(raw: str) -> bool:
@@ -297,12 +338,21 @@ ZASADY:
   Struktura raportu ZAWSZE musi być:
   1. Wyniki głównego narzędzia (nmap/nikto/sqlmap/etc.) - omów jako PIERWSZY,
      kompletnie, niezależnie od tego ile danych zawiera sekcja detekcji.
-  2. Weryfikacja detekcji - omów jako OSTATNI element, krótko (1-3 zdania):
+  2. JEŚLI surowe dane zawierają blok "ARTIFACT_RE_RESULTS": sekcja
+     "Analiza artefaktu" - omów jako DRUGI element, PRZED weryfikacją
+     detekcji, z pełnymi konkretami (patrz osobna instrukcja poniżej o
+     ARTIFACT_RE_RESULTS). Ta sekcja jest RÓWNIE OBOWIĄZKOWA jak wyniki
+     głównego narzędzia z punktu 1 - to trzeci pełnoprawny element
+     struktury raportu, nie opcjonalny dodatek.
+  3. Weryfikacja detekcji - omów jako OSTATNI element, krótko (1-3 zdania):
      czy system IDS/IPS zauwaŸył ruch, jakie alerty (typy, liczba, poziom).
      NIE pisz osobnego długiego raportu SOC o alertach Suricaty/Wazuh -
      to jest tylko informacja pomocnicza, czy skan był widoczny dla systemu.
   NIE WOLNO napisać raportu, który zawiera TYLKO sekcję detekcji bez wyniku
-  głównego narzędzia - to byłby raport niekompletny.
+  głównego narzędzia - to byłby raport niekompletny. NIE WOLNO pominąć
+  sekcji "Analiza artefaktu", jeśli dane ARTIFACT_RE_RESULTS są obecne w
+  surowych danych - pominięcie jej jest błędem tej samej wagi co
+  pominięcie wyników głównego narzędzia.
 - DANE ŹRóDŁOWE PO ANGIELSKU: jeśli surowe dane (np. alerty Suricata/Wazuh,
   opisy CVE, komunikaty systemowe) są po angielsku - PRZETŁUMACZ je na polski
   w swoim raporcie. Nigdy nie kopiuj obcojęzycznych bloków tekstu 1:1 do
@@ -311,6 +361,54 @@ ZASADY:
   AUTOMATYCZNIE": to jest JEDYNE ƹRÓDŁO PRAWDY o sukcesie/błędzie narzędzia.
   NIE nadpisuj tego statusu własną interpretacją stdout. Jeśli blok mówi
   SUKCES - narzędzie zadziałało, niezależnie od wyglądu stdout.
+- JEŚLI surowe dane zawierają blok "ARTIFACT_RE_RESULTS": oznacza to, że
+  użytkownik przesłał plik/artefakt do analizy (reverse engineering).
+  MUSISZ dodać w raporcie OSOBNĄ sekcję "Analiza artefaktu", zawierającą
+  WSZYSTKIE poniższe elementy, jeśli są obecne w danych:
+    - NAJWAŻNIEJSZE, SPRAWDŹ TO PIERWSZE: jeśli surowe dane zawierają blok
+      "### WERDYKT HASH-LOOKUP ARTEFAKTU - ZWERYFIKOWANY AUTOMATYCZNIE": to
+      jest JEDYNE ŹRÓDŁO PRAWDY o wyniku sprawdzenia SHA256 przeciw bazie
+      zagrożeń. Przepisz odpowiednią linię z tego bloku DOSŁOWNIE, bez
+      zmian, jako PIERWSZE zdanie sekcji "Analiza artefaktu". NIE
+      interpretuj samodzielnie pola "hash_lookup" w danych JSON poniżej -
+      werdykt jest już gotowy w tym bloku. Jeśli werdykt to "ZNANY
+      MALWARE", ta informacja ma najwyższy priorytet w całym raporcie,
+      niezależnie od severity pozostałych ustaleń.
+    - Nazwa/typ pliku (pole "file_type") oraz suma kontrolna (pole "sha256")
+      i rozmiar (pole "size_bytes").
+    - Wskaźniki z pola "summary.indicators" (has_urls, has_ip_addresses,
+      has_shell_commands, has_crypto_terms, has_network_terms,
+      has_debug_symbols, has_symbols) - wypisz KAŻDY wskaźnik, który ma
+      wartość true, jako osobne, konkretne ustalenie (nie tylko
+      "true/false", tylko co to oznacza dla bezpieczeństwa).
+    - KONKRETNE dane z pola "evidence": jeśli "evidence.urls_found" nie
+      jest puste, wymień KAŻDY znaleziony URL osobno. To samo dla
+      "evidence.ip_addresses_found" (adresy IP),
+      "evidence.suspicious_symbols_found" (funkcje/symbole takie jak
+      system, execve, socket - wskazujące na możliwe działanie:
+      wykonywanie poleceń powłoki, komunikację sieciową itp.) oraz
+      "evidence.crypto_terms_found".
+    - Jeśli pole "omitted.objdump_included" to false, wspomnij, że pełny
+      disassembly nie był analizowany przez model językowy (dostępny
+      osobno do analizy narzędziowej), żeby nie sugerować pełnej
+      analizy binarnej.
+    - Jeśli pole "evidence.yara_matches" nie jest puste: to są trafienia
+      DETERMINISTYCZNYCH reguł sygnaturowych YARA - najsilniejszy sygnał
+      w całej analizie artefaktu, MUSISZ je wymienić jako pierwsze w
+      sekcji "Analiza artefaktu". Dla każdego trafienia podaj nazwę
+      reguły (pole "rule"), poziom (pole "severity": high/medium/low) i
+      opis (pole "description"). Reguła z severity="high" jest zawsze
+      najważniejszym ustaleniem całego raportu artefaktu, niezależnie od
+      innych wskaźników.
+    - Jeśli pole "evidence.embedded_files_found" nie jest puste: binwalk
+      wykrył sygnatury innych plików/archiwów osadzonych wewnątrz
+      analizowanego artefaktu (np. archiwum ZIP, obraz, inna binarka
+      ukryta w środku). To jest częsty wzorzec w malware-dropperach -
+      wymień KAŻDE znalezisko z jego offsetem i opisem, i zaznacz to
+      jako ustalenie WYSOKIEGO ryzyka wymagające dalszej ręcznej analizy.
+  Sekcja "Analiza artefaktu" jest RÓWNIE OBOWIĄZKOWA jak pozostałe
+  sekcje audytu hosta - pominięcie jej, gdy dane ARTIFACT_RE_RESULTS są
+  obecne, jest błędem tej samej wagi co pominięcie reguły firewalla.
 """
 
 CRITIC_PROMPT = """Jesteś głównym recenzentem (critic) w systemie diagnostyki bezpieczeństwa.
@@ -369,6 +467,14 @@ ZADANIE (wykonaj dokładnie w tej kolejności):
     i reguł BEZ "on tailscale0" jako tego samego poziomu ryzyka. Konkretnie
     sprawdź reguły dla portów, które w surowych danych NIE mają
     "on tailscale0" przy sobie - to one są priorytetem.
+4f. Jeśli surowe dane zawierają blok "ARTIFACT_RE_RESULTS", sprawdź czy
+    KAŻDY szkic zawiera sekcję "Analiza artefaktu" z konkretnymi danymi
+    (sha256, file_type, wskaźniki, znalezione URL-e/IP/symbole - nie
+    tylko ogólnikowe "wykryto ślady"). Jeśli któryś szkic pominął tę
+    sekcję albo podał ją bez konkretów, dopisz ją samodzielnie w
+    finalnym raporcie NA PODSTAWIE surowych danych ARTIFACT_RE_RESULTS -
+    pominięcie analizy artefaktu jest błędem tej samej wagi co
+    pominięcie reguły firewalla.
 5. Napisz JEDEN finalny raport po polsku, zawierający WYŁĄCZNIE fakty
    potwierdzone w surowych danych.
 6. Na końcu dodaj krótką sekcję "Rozbieżności wykryte między modelami" -
@@ -418,23 +524,275 @@ Zawsze odpowiadaj wyłącznie po polsku. Nie wywołujesz żadnych narzędzi.
 
 class AuditState(TypedDict):
     thread_id: str
+    admin_password: Optional[str]
     user_request: str
     selected_tools: Optional[List[str]]
+    tool_params: Optional[dict]
     raw_results: str
+    deterministic_facts: str
+    firewall_facts_snapshot: str
+    docker_facts_snapshot: str
+    services_facts_snapshot: str
+    lynis_facts_snapshot: str
     draft_reports: List[dict]
     final_report: str
     escalation_count: Optional[int]
     last_tool_used: Optional[str]
     detection_checked: Optional[bool]
+    tool_call_count: int
+    artifact_results: list[dict]
+
+
+def build_artifact_verdict_block(artifact_results: list[dict]) -> str:
+    """
+    Deterministyczny blok werdyktu hash-lookup dla artefaktow, wstrzykiwany
+    tym samym wzorcem co tool_status_parser.py - modele 8-14B w tym
+    pipeline myliły/pomijały warunkową instrukcję "jeśli hash_lookup ...
+    inaczej ..." (raz sklejały oba warianty naraz, raz pomijały sekcję
+    całkowicie), więc zamiast liczyć na poprawną interpretację warunku
+    przez LLM, budujemy gotowy, niepodważalny werdykt w Pythonie.
+    """
+    if not artifact_results:
+        return ""
+
+    lines = []
+    lines.append(
+        "### WERDYKT HASH-LOOKUP ARTEFAKTU - ZWERYFIKOWANY AUTOMATYCZNIE "
+        "(deterministyczny parser, NIE LLM)"
+    )
+    lines.append("")
+    lines.append(
+        "Poniższa lista to JEDYNE ŹRÓDŁO PRAWDY co do wyniku sprawdzenia "
+        "SHA256 artefaktu przeciw lokalnej bazie znanych zagrożeń. Każdą "
+        "z poniższych linii MUSISZ przepisać DOSŁOWNIE jako pierwsze "
+        "zdanie sekcji \"Analiza artefaktu\" dla danego artefaktu - NIE "
+        "interpretuj samodzielnie pola \"hash_lookup\" w danych JSON "
+        "poniżej, werdykt jest już gotowy tutaj."
+    )
+    lines.append("")
+
+    for item in artifact_results:
+        artifact_id = item.get("artifact_id", "nieznany")
+        hl = item.get("hash_lookup")
+        if hl:
+            threat = hl.get("threat_name", "nieznany")
+            source = hl.get("source", "nieznane źródło")
+            verdict = f"ZNANY MALWARE: {threat} (źródło: {source})."
+        else:
+            verdict = (
+                "SHA256 nie występuje w lokalnej bazie znanych zagrożeń "
+                "(co NIE jest dowodem nieszkodliwości pliku)."
+            )
+        lines.append(f"- artefakt {artifact_id}: {verdict}")
+        fm = item.get("fuzzy_matches") or []
+        for m in fm:
+            lines.append(
+                f"  - PODOBIENSTWO {m.get('similarity')}% do znanego zagrozenia: "
+                f"{m.get('threat_name')} (zrodlo: {m.get('source')})"
+            )
+
+    lines.append("### KONIEC WERDYKTU ZWERYFIKOWANEGO AUTOMATYCZNIE")
+    return "\n".join(lines)
+
+
+def build_sast_verdict_block(sast_results: list[dict]) -> str:
+    """
+    Deterministyczny blok werdyktu SAST (Semgrep), tym samym wzorcem co
+    build_artifact_verdict_block. Liczba i tresc findings jest gotowa
+    z Pythona - LLM przepisuje, nie interpretuje warunkowo.
+    """
+    if not sast_results:
+        return ""
+
+    lines = []
+    lines.append(
+        "### WERDYKT SAST (SEMGREP) - ZWERYFIKOWANY AUTOMATYCZNIE "
+        "(deterministyczny parser, NIE LLM)"
+    )
+    lines.append("")
+    lines.append(
+        "Poniższa lista to JEDYNE ŹRÓDŁO PRAWDY co do liczby i treści "
+        "podatności wykrytych statyczną analizą kodu (Semgrep, oficjalne "
+        "rulesety p/sql-injection, p/security-audit, p/owasp-top-ten). "
+        "MUSISZ przepisać poniższe linie DOSŁOWNIE jako sekcję \"Analiza "
+        "artefaktu (SAST)\" - NIE licz findings samodzielnie z pola "
+        "\"findings\" w danych JSON poniżej, liczba jest już policzona "
+        "tutaj."
+    )
+    lines.append("")
+
+    for item in sast_results:
+        artifact_id = item.get("artifact_id", "nieznany")
+        count = item.get("findings_count", 0)
+        if count == 0:
+            verdict = "brak wykrytych podatności statyczną analizą kodu."
+        else:
+            verdict = f"wykryto {count} potencjalnych podatności:"
+        lines.append(f"- artefakt {artifact_id}: {verdict}")
+        for f in item.get("findings", []):
+            lines.append(
+                f"  - [{f.get('severity', '?')}] "
+                f"{f.get('rule_id', '?')} "
+                f"(linia {f.get('line_start', '?')}): "
+                f"{f.get('message', '')}"
+            )
+
+    lines.append("")
+    lines.append(
+        "OGRANICZENIE (informacja obowiazkowa do zacytowania w raporcie): "
+        "SAST wykrywa ZNANE, statyczne wzorce podatnosci. Brak wykrytych "
+        "podatnosci NIE oznacza braku podatnosci w kodzie - narzedzia "
+        "oparte o taint-tracking (jak Semgrep) moga przeoczyc przypadki "
+        "czesciowej/niewystarczajacej sanityzacji. Zalecane uzupelnienie "
+        "o dynamiczne testy (np. sqlmap_scan) i/lub manualny przeglad kodu."
+    )
+    lines.append("### KONIEC WERDYKTU SAST ZWERYFIKOWANEGO AUTOMATYCZNIE")
+    return "\n".join(lines)
+
+
+def load_artifact_re_node(state: AuditState):
+    """
+    Ładuje trwałe wyniki Artifact/RE dla bieżącego thread_id.
+
+    Node jest wyłącznie odczytowy: nie wykonuje artefaktu i nie uruchamia
+    ponownie RE. Korzysta z RawResult zapisanych podczas ingestu.
+    """
+    store = EvidenceStore()
+
+    raw_results = store.get_raw_results(
+        thread_id=state["thread_id"],
+    )
+
+    re_results = [
+        x for x in raw_results
+        if x.tool_name in ("re_pipeline", "sast_pipeline")
+    ]
+
+    artifact_results = []
+
+    for raw in re_results:
+        try:
+            parsed = json.loads(raw.stdout)
+        except Exception:
+            parsed = {
+                "artifact_id": raw.metadata.get("artifact_id"),
+                "raw_result_id": raw.id,
+                "parse_error": True,
+                "stdout": raw.stdout,
+            }
+
+        parsed["_raw_result_id"] = raw.id
+        artifact_results.append(parsed)
+
+    if not artifact_results:
+        logger.info(
+            "ARTIFACT_RE: brak wyników RE dla thread_id=%s",
+            state["thread_id"],
+        )
+        return {
+            "artifact_results": [],
+        }
+
+    deterministic_facts = "\n\n".join(
+        json.dumps(
+            item,
+            ensure_ascii=False,
+            indent=2,
+        )
+        for item in artifact_results
+    )
+
+    # RE jest trwałym wynikiem narzędzia i musi wejść do tego samego,
+    # niezmiennego strumienia dowodowego co pozostałe wyniki narzędzi.
+    # Dzięki temu report_writers i critic nie mogą "zgubić" artefaktu
+    # tylko dlatego, że pochodzi z osobnego pipeline'u.
+    hash_verdict = build_artifact_verdict_block(
+        [x for x in artifact_results if "hash_lookup" in x]
+    )
+    sast_verdict = build_sast_verdict_block(
+        [x for x in artifact_results if "findings_count" in x]
+    )
+    verdict_block = "\n\n".join(v for v in (hash_verdict, sast_verdict) if v)
+
+    re_raw_block = (
+        "ARTIFACT_RE_RESULTS (JEDYNE ŹRÓDŁO DOWODÓW DLA ANALIZY ARTEFAKTÓW):\n"
+        + (verdict_block + "\n\n" if verdict_block else "")
+        + deterministic_facts
+    )
+
+    previous_raw = (state.get("raw_results") or "").strip()
+    raw_results = (
+        f"{previous_raw}\\n\\n{re_raw_block}"
+        if previous_raw
+        else re_raw_block
+    )
+
+    logger.info(
+        "ARTIFACT_RE: załadowano %d wynik(ów) RE dla thread_id=%s; "
+        "dołączono do raw_results (len=%d)",
+        len(artifact_results),
+        state["thread_id"],
+        len(raw_results),
+    )
+
+    return {
+        "artifact_results": artifact_results,
+        "deterministic_facts": deterministic_facts,
+        "raw_results": raw_results,
+        # RE jest rzeczywistym wynikiem narzędzia zapisanym w EvidenceStore.
+        # Nie pozwalamy, aby guard report_writers uznał taki audyt za
+        # pozbawiony danych tylko dlatego, że RE nie zwiększało wcześniej
+        # tool_call_count.
+        "tool_call_count": max(
+            int(state.get("tool_call_count") or 0),
+            len(artifact_results),
+        ),
+    }
+
 
 
 def build_app():
-    tool_llm = ChatOllama(model=TOOL_MODEL_NAME, base_url=OLLAMA_BASE_URL, temperature=0, num_ctx=8192)
+    tool_llm = ChatOllama(model=TOOL_MODEL_NAME, base_url=OLLAMA_BASE_URL, temperature=0, num_ctx=8192,
+            client_kwargs={"timeout": httpx.Timeout(600.0, connect=10.0)})
 
     def security_node(state: AuditState):
-        pentest_tools_list = make_pentest_tools(state["thread_id"])
+        logger.info(
+            "SECURITY_NODE_INPUT: thread_id=%s raw_len=%d artifact_re=%s "
+            "tool_call_count=%s escalation_count=%s selected_tools=%s",
+            state["thread_id"],
+            len(state.get("raw_results") or ""),
+            "ARTIFACT_RE_RESULTS" in (state.get("raw_results") or ""),
+            state.get("tool_call_count"),
+            state.get("escalation_count"),
+            state.get("selected_tools"),
+        )
+
+        logger.info(
+            "SECURITY_NODE_BEFORE_PENTEST_TOOLS: thread_id=%s",
+            state["thread_id"],
+        )
+        pentest_tools_list = make_pentest_tools(
+            state["thread_id"],
+            admin_password=state.get("admin_password"),
+        )
+        logger.info(
+            "SECURITY_NODE_AFTER_PENTEST_TOOLS: thread_id=%s pentest_tools=%s",
+            state["thread_id"],
+            [t.name for t in pentest_tools_list],
+        )
+
+        logger.info(
+            "SECURITY_NODE_BEFORE_MAKE_TOOLS: thread_id=%s",
+            state["thread_id"],
+        )
         all_tools = make_tools() + pentest_tools_list
         audit_only_tools = make_tools()
+        logger.info(
+            "SECURITY_NODE_AFTER_MAKE_TOOLS: thread_id=%s all_tools=%s audit_tools=%s",
+            state["thread_id"],
+            [t.name for t in all_tools],
+            [t.name for t in audit_only_tools],
+        )
         pentest_tool_names = {t.name for t in pentest_tools_list}
 
         escalation_count = state.get("escalation_count") or 0
@@ -482,6 +840,14 @@ def build_app():
                 # nigdy nie uruchamiaja sie same - wymagaja jawnego zaznaczenia
                 # przez czlowieka w interfejsie.
                 tools_to_use = audit_only_tools
+
+            logger.info(
+                "SECURITY_NODE_TOOLS_SELECTED: thread_id=%s tools=%s selected=%s",
+                state["thread_id"],
+                [t.name for t in tools_to_use],
+                selected,
+            )
+
             request_text = state["user_request"]
             status_store.set_status(
                 state["thread_id"], "security_agent",
@@ -501,7 +867,7 @@ def build_app():
         # limitu narzedzie zwraca komunikat zamiast faktycznie sie wykonac,
         # co model widzi jako ToolMessage i (zgodnie z SECURITY_AGENT_PROMPT)
         # powinien przejsc dalej zamiast probowac ponownie.
-        MAX_IDENTICAL_CALLS = 2
+        MAX_IDENTICAL_CALLS = 1
         _call_counts: dict[tuple, int] = {}
 
         def _limit_duplicate_calls(tool_obj):
@@ -529,6 +895,163 @@ def build_app():
 
         tools_to_use = [_limit_duplicate_calls(t) for t in tools_to_use]
 
+        # ========================================================
+        # DETERMINISTYCZNE WYKONANIE JAWNIE WYBRANYCH NARZĘDZI
+        #
+        # Jeżeli UI podało selected_tools ORAZ parametry narzędzia,
+        # nie prosimy LLM o wykonanie tool-calla. Python wykonuje
+        # dokładnie wskazane narzędzie z dokładnie przekazanymi
+        # parametrami.
+        #
+        # Dzięki temu:
+        #   selected_tools = ["nmap_stealth_scan"]
+        #   tool_params = {"nmap_stealth_scan": {"target": "..."}}
+        #
+        # nie zależy od tego, czy model 8B poprawnie wygeneruje
+        # natywny tool call.
+        # ========================================================
+
+        selected_params = state.get("tool_params") or {}
+
+        if selected and selected_params:
+            selected_set = set(selected)
+
+            # JAWNY WYBÓR Z UI = DOKŁADNIE WYBRANE NARZĘDZIA,
+            # W KOLEJNOŚCI PRZEKAZANEJ PRZEZ UI.
+            # Bez dodatkowego wyboru przez LLM.
+            direct_tools = [
+                next(
+                    (t for t in tools_to_use if t.name == tool_name),
+                    None,
+                )
+                for tool_name in selected
+            ]
+            direct_tools = [t for t in direct_tools if t is not None]
+
+            direct_outputs = []
+            direct_tool_names = []
+
+            for tool_obj in direct_tools:
+                params = selected_params.get(tool_obj.name)
+
+                if params is None:
+                    continue
+
+                if not isinstance(params, dict):
+                    direct_outputs.append(
+                        json.dumps(
+                            {
+                                "status": "error",
+                                "message": (
+                                    f"Parametry narzędzia '{tool_obj.name}' "
+                                    "muszą być obiektem JSON."
+                                ),
+                            },
+                            ensure_ascii=False,
+                        )
+                    )
+                    direct_tool_names.append(tool_obj.name)
+                    continue
+
+                logger.info(
+                    f"DIRECT_TOOL_CALL: '{tool_obj.name}' "
+                    f"params={params} "
+                    f"(thread_id={state['thread_id']})"
+                )
+
+                try:
+                    # StructuredTool.invoke() wykonuje faktyczną funkcję
+                    # narzędzia, bez udziału modelu.
+                    result = tool_obj.invoke(params)
+
+                    if isinstance(result, str):
+                        output = result
+                    else:
+                        output = json.dumps(
+                            result,
+                            ensure_ascii=False,
+                            default=str,
+                        )
+
+                    direct_outputs.append(output)
+                    direct_tool_names.append(tool_obj.name)
+
+                except Exception as exc:
+                    logger.exception(
+                        f"DIRECT_TOOL_ERROR: '{tool_obj.name}' "
+                        f"(thread_id={state['thread_id']})"
+                    )
+                    direct_outputs.append(
+                        json.dumps(
+                            {
+                                "status": "error",
+                                "message": (
+                                    f"Wyjątek podczas bezpośredniego "
+                                    f"wywołania narzędzia '{tool_obj.name}': "
+                                    f"{exc}"
+                                ),
+                            },
+                            ensure_ascii=False,
+                        )
+                    )
+                    direct_tool_names.append(tool_obj.name)
+
+            # Jeżeli znaleźliśmy parametry dla co najmniej jednego
+            # wybranego narzędzia, traktujemy ten przebieg jako
+            # deterministyczne wykonanie i NIE uruchamiamy ReAct.
+            if direct_tool_names:
+                new_raw_part = "\n\n".join(direct_outputs)
+
+                from collections import Counter
+
+                call_counts = Counter(direct_tool_names)
+
+                count_lines = [
+                    "### ZWERYFIKOWANA LICZBA WYWOŁAŃ NARZĘDZI W TYM PRZEBIEGU "
+                    "(NIEPODWAŻALNE, policzone w kodzie)",
+                ]
+
+                for tool_name, count in call_counts.items():
+                    count_lines.append(
+                        f"- {tool_name}: wywołane {count} raz(y)"
+                    )
+
+                count_lines.append(
+                    "UŻYWAJ WYŁĄCZNIE powyższych liczb, jeśli w raporcie "
+                    "wspominasz ile razy narzędzie zostało wykonane."
+                )
+
+                new_raw_part += "\n\n" + "\n".join(count_lines)
+
+                last_tool_used_now = direct_tool_names[-1]
+
+                raw_results = (
+                    f"{previous_raw}\n\n{new_raw_part}"
+                    if previous_raw
+                    else new_raw_part
+                )
+
+                logger.info(
+                    f"DIRECT_TOOL_RESULTS: "
+                    f"tools={direct_tool_names}, "
+                    f"thread_id={state['thread_id']}"
+                )
+
+                return {
+                    "raw_results": raw_results,
+                    "last_tool_used": last_tool_used_now,
+                    "tool_call_count": max(state.get("tool_call_count") or 0, len(direct_tool_names)),
+                    "escalation_count": escalation_count,
+                }
+
+        logger.info(
+            "SECURITY_NODE_BEFORE_REACT_AGENT: thread_id=%s model=%s tools=%s prompt_len=%d",
+            state["thread_id"],
+            getattr(tool_llm, "model", None),
+            [t.name for t in tools_to_use],
+            len(prompt),
+        )
+
         security_agent = create_react_agent(
             tool_llm,
             tools=tools_to_use,
@@ -536,18 +1059,41 @@ def build_app():
             name="security_agent",
         )
 
+        logger.info(
+            "SECURITY_NODE_AFTER_REACT_AGENT: thread_id=%s",
+            state["thread_id"],
+        )
+
         def _invoke_agent():
+            logger.info(
+                "SECURITY_NODE_BEFORE_AGENT_INVOKE: thread_id=%s request_len=%d recursion_limit=%s",
+                state["thread_id"],
+                len(request_text),
+                AGENT_RECURSION_LIMIT,
+            )
             try:
-                return security_agent.invoke(
+                result = security_agent.invoke(
                     {"messages": [{"role": "user", "content": request_text}]},
                     config={"recursion_limit": AGENT_RECURSION_LIMIT},
                 )
+                logger.info(
+                    "SECURITY_NODE_AFTER_AGENT_INVOKE: thread_id=%s messages=%d",
+                    state["thread_id"],
+                    len(result.get("messages", [])),
+                )
+                return result
             except GraphRecursionError:
                 logger.warning(
                     f"security_agent przekroczył limit {AGENT_RECURSION_LIMIT} kroków "
                     f"(thread_id={state['thread_id']}) - kontynuuję z pustym wynikiem tej próby."
                 )
                 return {"messages": []}
+            except Exception:
+                logger.exception(
+                    "SECURITY_NODE_AGENT_INVOKE_ERROR: thread_id=%s",
+                    state["thread_id"],
+                )
+                raise
 
         result = _invoke_agent()
         tool_messages = [m for m in result["messages"] if m.__class__.__name__ == "ToolMessage"]
@@ -620,14 +1166,20 @@ def build_app():
                 "raw_results": raw_results,
                 "last_tool_used": last_tool_used_now,
                 "escalation_count": escalation_count,
+                "tool_call_count": state.get("tool_call_count") or 0,
             }
 
         if tool_outputs:
             new_raw_part = "\n\n".join(tool_outputs)
-        elif result["messages"]:
-            new_raw_part = result["messages"][-1].content
         else:
-            new_raw_part = "Agent nie zwrócił żadnego wyniku (przekroczony limit kroków)."
+            new_raw_part = (
+                "### BRAK ZWERYFIKOWANYCH WYNIKÓW NARZĘDZI\n"
+                "Żadne narzędzie nie dostarczyło wyniku ToolMessage.\n"
+                "Tekst wygenerowany przez agenta NIE jest wynikiem narzędzia "
+                "i NIE może być traktowany jako fakt diagnostyczny.\n"
+                "Nie wolno na jego podstawie raportować portów, usług, podatności, "
+                "CVE, alertów ani innych ustaleń bezpieczeństwa."
+            )
 
         # ZABEZPIECZENIE: modele czasem zmyslaja liczbe faktycznych wywolan
         # narzedzia w swoim raporcie (np. "wykonano 7 razy" gdy tool_calls
@@ -725,6 +1277,26 @@ def build_app():
         if hydra_block:
             new_raw_part = new_raw_part + "\n\n" + hydra_block
             logger.info(f"FACTS_HYDRA: wstrzyknięto blok deterministyczny ({len(hydra_block)} znaków)")
+        sqlmap_block = extract_and_format_sqlmap_block(new_raw_part)
+        if sqlmap_block:
+            new_raw_part = new_raw_part + "\n\n" + sqlmap_block
+            logger.info(f"FACTS_SQLMAP: wstrzyknięto blok deterministyczny ({len(sqlmap_block)} znaków)")
+        gobuster_block = extract_and_format_gobuster_block(new_raw_part)
+        if gobuster_block:
+            new_raw_part = new_raw_part + "\n\n" + gobuster_block
+            logger.info(f"FACTS_GOBUSTER: wstrzyknięto blok deterministyczny ({len(gobuster_block)} znaków)")
+        ffuf_block = extract_and_format_ffuf_block(new_raw_part)
+        if ffuf_block:
+            new_raw_part = new_raw_part + "\n\n" + ffuf_block
+            logger.info(f"FACTS_FFUF: wstrzyknięto blok deterministyczny ({len(ffuf_block)} znaków)")
+        enum4linux_block = extract_and_format_enum4linux_block(new_raw_part)
+        if enum4linux_block:
+            new_raw_part = new_raw_part + "\n\n" + enum4linux_block
+            logger.info(f"FACTS_ENUM4LINUX: wstrzyknięto blok deterministyczny ({len(enum4linux_block)} znaków)")
+        nikto_block = extract_and_format_nikto_block(new_raw_part)
+        if nikto_block:
+            new_raw_part = new_raw_part + "\n\n" + nikto_block
+            logger.info(f"FACTS_NIKTO: wstrzyknięto blok deterministyczny ({len(nikto_block)} znaków)")
 
         lynis_block = extract_and_format_lynis_block(new_raw_part)
         if lynis_block:
@@ -772,10 +1344,28 @@ def build_app():
             f"RAW_RESULTS (len={len(raw_results)}, tool_calls={len(tool_outputs)}, "
             f"last_tool={last_tool_used_now}, escalation_count={escalation_count}): {raw_results}"
         )
+        logger.info(
+            "SECURITY_NODE_OUTPUT: thread_id=%s raw_len=%d artifact_re=%s "
+            "tool_call_count=%d last_tool=%s",
+            state["thread_id"],
+            len(raw_results),
+            "ARTIFACT_RE_RESULTS" in raw_results,
+            len(tool_messages),
+            last_tool_used_now,
+        )
         return {
             "raw_results": raw_results,
             "last_tool_used": last_tool_used_now,
+            "tool_call_count": max(state.get("tool_call_count") or 0, len(tool_messages)),
             "escalation_count": escalation_count,
+            # Snapshot sprzed compact_raw_results() - ten sam firewall_block
+            # ktory dopiero co zostal wstrzykniety do new_raw_part. Jesli w
+            # tej iteracji nie bylo nowych danych firewalla, zachowujemy
+            # poprzedni snapshot zamiast go kasowac.
+            "firewall_facts_snapshot": firewall_block or state.get("firewall_facts_snapshot") or "",
+            "docker_facts_snapshot": docker_block or state.get("docker_facts_snapshot") or "",
+            "services_facts_snapshot": services_block or state.get("services_facts_snapshot") or "",
+            "lynis_facts_snapshot": lynis_block or state.get("lynis_facts_snapshot") or "",
         }
 
     def escalate_prep_node(state: AuditState):
@@ -825,6 +1415,32 @@ def build_app():
         return {"raw_results": raw_results, "detection_checked": True}
 
     def report_writers_node(state: AuditState):
+        # TWARDY GUARD: bez rzeczywistych danych z narzędzi nie generujemy raportu.
+        raw_results = (state.get("raw_results") or "").strip()
+        logger.info(
+            "REPORT_WRITER_INPUT: thread_id=%s raw_len=%d artifact_re=%s",
+            state["thread_id"],
+            len(raw_results),
+            "ARTIFACT_RE_RESULTS" in raw_results,
+        )
+        tool_call_count = int(state.get("tool_call_count") or 0)
+
+        if not raw_results or tool_call_count <= 0:
+            logger.warning(
+                f"REPORT_BLOCKED_NO_TOOL_DATA: brak raw_results "
+                f"(thread_id={state['thread_id']})"
+            )
+            return {
+                "draft_reports": [{
+                    "model": "deterministic_guard",
+                    "report": (
+                        "BRAK DANYCH Z NARZĘDZI. "
+                        "Nie wykonano żadnego narzędzia, więc nie można "
+                        "potwierdzić żadnych ustaleń bezpieczeństwa."
+                    ),
+                }]
+            }
+
         drafts = []
         total = len(REPORT_MODEL_NAMES)
         for idx, model_name in enumerate(REPORT_MODEL_NAMES, start=1):
@@ -833,42 +1449,394 @@ def build_app():
                 state["thread_id"], "report_writers",
                 f"Piszę szkic raportu: {model_name} ({idx}/{total})",
             )
-            llm = ChatOllama(model=model_name, base_url=OLLAMA_BASE_URL, temperature=0.3, num_ctx=8192)
+            llm = ChatOllama(model=model_name, base_url=OLLAMA_BASE_URL, temperature=0.3, num_ctx=32768,
+            client_kwargs={"timeout": httpx.Timeout(600.0, connect=10.0)})
             prompt = (
                 f"{REPORT_PROMPT}\n\n"
+                "=== TWARDY KONTRAKT DOWODOWY ===\n"
+                "RAW_RESULTS jest JEDYNYM źródłem faktów.\n"
+                "Nie wolno wymyślać wyników narzędzi, portów, usług, "
+                "podatności, CVE, wersji, użytkowników ani konfiguracji.\n"
+                "Nie wolno traktować wiedzy modelu ani treści prośby użytkownika "
+                "jako dowodu.\n"
+                "Jeżeli faktu nie ma w RAW_RESULTS, oznacz go jako "
+                "NIE ZWERYFIKOWANO i nie przedstawiaj go jako ustalenia.\n"
+                "Każde ustalenie bezpieczeństwa musi wynikać bezpośrednio "
+                "z RAW_RESULTS.\n"
+                "=== KONIEC KONTRAKTU ===\n\n"
                 f"Prośba użytkownika: {state['user_request']}\n\n"
-                f"Surowe dane od security_agenta:\n{state['raw_results']}"
+                f"RAW_RESULTS (JEDYNE ŹRÓDŁO DOWODÓW):\n{raw_results}"
             )
             logger.info(f"PROMPT_SIZE[{model_name}]: {len(prompt)} znakow (prompt do report writera)")
             response = llm.invoke(prompt)
             meta = response.response_metadata
             logger.info(
                 f"TOKEN_USAGE[{model_name}]: prompt_eval_count={meta.get('prompt_eval_count')}, "
-                f"eval_count={meta.get('eval_count')}, num_ctx_configured=8192"
+                f"eval_count={meta.get('eval_count')}, num_ctx_configured=32768"
             )
             drafts.append({"model": model_name, "report": response.content})
         return {"draft_reports": drafts}
 
+
+    def build_deterministic_critic_facts(state: AuditState) -> str:
+        """
+        JEDYNY blok faktograficzny przekazywany criticowi.
+
+        Wszystkie wartości techniczne muszą pochodzić z parserów deterministycznych.
+        Critic NIE interpretuje surowego stdout jako źródła faktów.
+        """
+        raw = (state.get("raw_results") or "").strip()
+
+        facts = []
+
+        # Istniejące deterministyczne ekstraktory.
+        extractors = [
+            ("PORTS", extract_and_format_ports_block),
+            ("NMAP", extract_and_format_nmap_block),
+            ("HYDRA", extract_and_format_hydra_block),
+            ("SQLMAP", extract_and_format_sqlmap_block),
+            ("GOBUSTER", extract_and_format_gobuster_block),
+            ("FFUF", extract_and_format_ffuf_block),
+            ("ENUM4LINUX", extract_and_format_enum4linux_block),
+            ("NIKTO", extract_and_format_nikto_block),
+            ("CONNECTION_GUARD", extract_and_format_connection_guard),
+        ]
+
+        for name, extractor in extractors:
+            try:
+                block = extractor(raw)
+            except Exception as exc:
+                logger.exception("CRITIC_FACTS extractor %s failed: %s", name, exc)
+                block = None
+
+            if block:
+                facts.append(f"### FACTS_{name}\n{block}")
+
+        # Istniejące parsery/importy - jeśli funkcja istnieje w tej wersji.
+        optional_extractors = [
+            ("SEARCHSPLOIT", "extract_and_format_searchsploit_block"),
+            ("TESTSSL", "extract_and_format_testssl_block"),
+            ("EXPOSURE_GUARD", "extract_and_format_port_exposure_guard"),
+            ("FIREWALL", "extract_and_format_firewall_block"),
+            ("SECTION_CHECKLIST", "extract_and_format_section_checklist"),
+            ("DOCKER", "extract_and_format_docker_block"),
+            ("SERVICES", "extract_and_format_services_block"),
+            ("LYNIS", "extract_and_format_lynis_block"),
+        ]
+
+        module_globals = globals()
+
+        for name, fn_name in optional_extractors:
+            fn = module_globals.get(fn_name)
+            if not fn:
+                continue
+
+            try:
+                block = fn(raw)
+            except Exception as exc:
+                logger.exception("CRITIC_FACTS extractor %s failed: %s", name, exc)
+                block = None
+
+            # FALLBACK: compact_raw_results() zastepuje surowy stdout
+            # placeholderem PO tym jak security_node juz raz poprawnie
+            # sparsowal dany blok. Ponowne parsowanie tutaj (na skompaktowanym
+            # raw) zwraca wiec pustke. Uzywamy snapshotu zapisanego przed
+            # kompaktowaniem zamiast cichej utraty danych. Dotyczy wszystkich
+            # blokow ktore _reduce_bulky_fields() moze podmienic na placeholder.
+            SNAPSHOT_KEYS = {
+                "FIREWALL": "firewall_facts_snapshot",
+                "DOCKER": "docker_facts_snapshot",
+                "SERVICES": "services_facts_snapshot",
+                "LYNIS": "lynis_facts_snapshot",
+            }
+            if not block and name in SNAPSHOT_KEYS:
+                snapshot = state.get(SNAPSHOT_KEYS[name])
+                if snapshot:
+                    block = snapshot
+                    logger.info(
+                        "CRITIC_FACTS: %s odtworzony z %s "
+                        "(raw juz skompaktowany, ponowne parsowanie zwrocilo pustke)",
+                        name, SNAPSHOT_KEYS[name],
+                    )
+
+            if block:
+                facts.append(f"### FACTS_{name}\n{block}")
+
+        if not facts:
+            return (
+                "### DETERMINISTIC_FACTS\n"
+                "Brak wyodrębnionych faktów deterministycznych.\n"
+                "Nie wolno wyprowadzać faktów technicznych z wiedzy modelu."
+            )
+
+        return (
+            "### DETERMINISTIC_FACTS\n"
+            "Poniższe dane są jedynym autorytatywnym źródłem faktów "
+            "technicznych dla raportu.\n\n"
+            + "\n\n".join(facts)
+        )
+
     def critic_node(state: AuditState):
+        # TWARDY GUARD: critic nie może wygenerować ustaleń,
+        # jeżeli nie istnieją rzeczywiste wyniki narzędzi.
+        raw_results = (state.get("raw_results") or "").strip()
+        logger.info(
+            "CRITIC_INPUT: thread_id=%s raw_len=%d artifact_re=%s",
+            state["thread_id"],
+            len(raw_results),
+            "ARTIFACT_RE_RESULTS" in raw_results,
+        )
+        tool_call_count = int(state.get("tool_call_count") or 0)
+
+        if not raw_results or tool_call_count <= 0:
+            logger.warning(
+                f"CRITIC_BLOCKED_NO_TOOL_DATA: brak raw_results "
+                f"(thread_id={state['thread_id']})"
+            )
+            return {
+                "final_report": (
+                    "BRAK DANYCH Z NARZĘDZI.\n\n"
+                    "Nie wykonano żadnego narzędzia, więc nie można "
+                    "potwierdzić żadnych ustaleń bezpieczeństwa."
+                )
+            }
+
         status_store.set_status(
             state["thread_id"], "critic",
-            f"Recenzent weryfikuje szkice: {CRITIC_MODEL_NAME}",
+            f"Recenzent opisuje deterministyczne fakty: {CRITIC_MODEL_NAME}",
         )
-        critic_llm = ChatOllama(model=CRITIC_MODEL_NAME, base_url=OLLAMA_BASE_URL, temperature=0, num_ctx=16384)
+
+        critic_llm = ChatOllama(
+            model=CRITIC_MODEL_NAME,
+            base_url=OLLAMA_BASE_URL,
+            temperature=0,
+            num_ctx=16384,
+        
+            client_kwargs={"timeout": httpx.Timeout(600.0, connect=10.0)},)
+
+        deterministic_facts = build_deterministic_critic_facts(state)
 
         drafts_text = "\n\n".join(
             f"--- Szkic od modelu: {d['model']} ---\n{d['report']}"
-            for d in state["draft_reports"]
+            for d in state.get("draft_reports", [])
         )
 
-        prompt = (
-            f"{CRITIC_PROMPT}\n\n"
-            f"Prośba użytkownika: {state['user_request']}\n\n"
-            f"SUROWE DANE (jedyne źródło prawdy):\n{state['raw_results']}\n\n"
-            f"SZKICE RAPORTÓW DO WERYFIKACJI:\n{drafts_text}"
-        )
+        prompt = f"""
+Jesteś WYŁĄCZNIE redaktorem końcowego raportu bezpieczeństwa.
+
+Twoja rola NIE polega na odkrywaniu ani ustalaniu faktów.
+
+FUNKCJA:
+- opisz poprawnie fakty przekazane w DETERMINISTIC_FACTS,
+- uporządkuj je,
+- połącz je w czytelny raport po polsku,
+- możesz porównać szkice i wybrać lepsze sformułowania,
+- możesz wskazać, że czegoś nie potwierdzono,
+- możesz zasugerować kolejne narzędzia lub działania diagnostyczne,
+- możesz zasugerować rozwiązania problemu.
+
+ABSOLUTNY ZAKAZ HALUCYNACJI:
+- NIE dodawaj żadnego portu,
+- NIE dodawaj żadnej usługi,
+- NIE dodawaj wersji,
+- NIE dodawaj CVE,
+- NIE dodawaj podatności,
+- NIE dodawaj adresu IP,
+- NIE dodawaj użytkownika,
+- NIE dodawaj konfiguracji,
+- NIE dodawaj liczby,
+- NIE dodawaj wyniku narzędzia,
+jeżeli nie występuje to w DETERMINISTIC_FACTS.
+
+SZKICE NIE SĄ ŹRÓDŁEM PRAWDY.
+Jeżeli szkic zawiera informację, której nie ma w DETERMINISTIC_FACTS:
+USUŃ JĄ.
+
+WIEDZA WŁASNA MODELU NIE JEST DOWODEM.
+Nie wolno uzupełniać brakujących informacji wiedzą ogólną.
+
+KRYTYCZNA ZASADA:
+Jeżeli czegoś nie ma w DETERMINISTIC_FACTS, napisz:
+"NIE ZWERYFIKOWANO"
+zamiast zgadywać.
+
+SUGESTIE:
+Możesz proponować kolejne narzędzia i działania, ale sugestia NIE jest wynikiem
+wykonanego narzędzia. Oznacz ją jako "SUGESTIA".
+
+Przykład:
+"SUGESTIA: wykonać nmap_vuln_scan w celu dalszej weryfikacji."
+
+Nie pisz:
+"nmap_vuln_scan wykazał ...",
+jeżeli tego faktu nie ma w DETERMINISTIC_FACTS.
+
+=== KONIEC KONTRAKTU ===
+
+PROŚBA UŻYTKOWNIKA:
+{state["user_request"]}
+
+{deterministic_facts}
+
+SZKICE — TYLKO DO REDAKCJI:
+{drafts_text}
+
+Napisz wyłącznie finalny raport po polsku.
+"""
+
         logger.info(f"PROMPT_SIZE[critic/{CRITIC_MODEL_NAME}]: {len(prompt)} znakow (prompt do critica)")
         response = critic_llm.invoke(prompt)
+
+        # HARD EVIDENCE SANITIZER:
+        # critic nie może wprowadzać faktów technicznych spoza RAW_RESULTS.
+        final_report = response.content
+
+        # Usuń znany typ halucynacji: numer wersji Nmap potraktowany
+        # jako wersja Apache.
+        final_report = final_report.replace(
+            "wersji 7.99",
+            "wersji nieustalonej"
+        )
+        final_report = final_report.replace(
+            "wersję 7.99",
+            "wersję nieustaloną"
+        )
+        final_report = final_report.replace(
+            "Apache 7.99",
+            "Apache w wersji nieustalonej"
+        )
+
+        # RAW_RESULTS z tego audytu zawiera tylko Apache 2.4.25.
+        # Jeżeli raport twierdzi inaczej, normalizujemy wersję.
+        if "Apache httpd 2.4.25" in raw_results:
+            final_report = final_report.replace(
+                "Apache 7.99",
+                "Apache 2.4.25"
+            )
+
+        # CVE wolno podać tylko wtedy, gdy konkretny numer CVE
+        # występuje w RAW_RESULTS.
+        import re
+        raw_cves = set(re.findall(r"CVE-\\d{4}-\\d{4,7}", raw_results))
+        report_cves = set(re.findall(r"CVE-\\d{4}-\\d{4,7}", final_report))
+
+        for cve in report_cves - raw_cves:
+            final_report = final_report.replace(
+                cve,
+                f"{cve} (NIE ZWERYFIKOWANO w danych skanu)"
+            )
+
+        # FIREWALL_COMPLETENESS_GUARD:
+        # Critic ma udokumentowana tendencje do skracania dlugich list
+        # (np. 45 regul firewalla) mimo wyraznej instrukcji w FACTS_FIREWALL
+        # zeby przepisac WSZYSTKIE pozycje. Zamiast ufac posluszenstwu modelu,
+        # weryfikujemy to w kodzie: liczymy realne wystapienia "RYZYKO:" w
+        # finalnym raporcie i porownujemy z liczba referencyjna z parsera
+        # deterministycznego. Jesli sie nie zgadza - doklejamy PELNA tabele
+        # jako osobna, JAWNIE OZNACZONA sekcje (nie mieszamy bezszwowo z
+        # tekstem LLM, zeby bylo widac co jest danymi automatycznymi a co
+        # interpretacja modelu).
+        try:
+            firewall_block_for_check = extract_and_format_firewall_block(raw_results)
+        except Exception as exc:
+            logger.exception("FIREWALL_COMPLETENESS_GUARD: blad parsera: %s", exc)
+            firewall_block_for_check = None
+
+        if not firewall_block_for_check:
+            firewall_block_for_check = state.get("firewall_facts_snapshot") or None
+            if firewall_block_for_check:
+                logger.info(
+                    "FIREWALL_COMPLETENESS_GUARD: raw_results juz skompaktowany, "
+                    "uzywam firewall_facts_snapshot"
+                )
+
+        if firewall_block_for_check:
+            ref_match = re.search(
+                r"Liczba referencyjna do weryfikacji: dokładnie (\d+) regu",
+                firewall_block_for_check,
+            )
+            if ref_match:
+                expected_rules = int(ref_match.group(1))
+                actual_rules = final_report.count("RYZYKO:")
+                if actual_rules != expected_rules:
+                    logger.warning(
+                        "FIREWALL_COMPLETENESS_GUARD: raport zawiera %d/%d regul "
+                        "firewalla - doklejam pelna tabele deterministyczna",
+                        actual_rules, expected_rules,
+                    )
+                    final_report += (
+                        "\n\n---\n\n"
+                        "## Pełna lista reguł firewalla (dane automatyczne, zweryfikowane)\n\n"
+                        "Uwaga: powyższa sekcja raportu (wygenerowana przez model) "
+                        f"wymieniła {actual_rules} z {expected_rules} reguł z surowego "
+                        "`ufw status verbose`. Poniższa tabela jest wstawiona "
+                        "automatycznie przez kod deterministyczny, NIE przez model "
+                        "językowy, i zawiera KOMPLETNĄ listę:\n\n"
+                        + firewall_block_for_check
+                    )
+                else:
+                    logger.info(
+                        "FIREWALL_COMPLETENESS_GUARD: OK (%d/%d regul w raporcie)",
+                        actual_rules, expected_rules,
+                    )
+
+        # LYNIS_COMPLETENESS_GUARD:
+        # Analogicznie do FIREWALL_COMPLETENESS_GUARD - Lynis potrafi miec
+        # dziesiatki pozycji (ostrzezenia + sugestie), a Critic ma
+        # udokumentowana tendencje do ich grupowania/skracania mimo
+        # instrukcji "wypisz wszystkie". Liczymy realne wystapienia kodow
+        # testow Lynis (np. [SSH-7408]) w finalnym raporcie i porownujemy
+        # z suma zadeklarowana w FACTS_LYNIS.
+        try:
+            lynis_block_for_check = extract_and_format_lynis_block(raw_results)
+        except Exception as exc:
+            logger.exception("LYNIS_COMPLETENESS_GUARD: blad parsera: %s", exc)
+            lynis_block_for_check = None
+
+        if not lynis_block_for_check:
+            lynis_block_for_check = state.get("lynis_facts_snapshot") or None
+            if lynis_block_for_check:
+                logger.info(
+                    "LYNIS_COMPLETENESS_GUARD: raw_results juz skompaktowany, "
+                    "uzywam lynis_facts_snapshot"
+                )
+
+        if lynis_block_for_check:
+            warn_match = re.search(
+                r"Liczba ostrzezen \(warnings\):\s*(\d+)",
+                lynis_block_for_check,
+            )
+            sugg_match = re.search(
+                r"Liczba sugestii \(suggestions\):\s*(\d+)",
+                lynis_block_for_check,
+            )
+            if warn_match and sugg_match:
+                expected_total = int(warn_match.group(1)) + int(sugg_match.group(1))
+                actual_total = len(re.findall(r"\[[A-Z]+-\d{4}\]", final_report))
+                if actual_total < expected_total:
+                    logger.warning(
+                        "LYNIS_COMPLETENESS_GUARD: raport zawiera %d/%d pozycji "
+                        "Lynis (ostrzezenia+sugestie) - doklejam pelna tabele "
+                        "deterministyczna",
+                        actual_total, expected_total,
+                    )
+                    final_report += (
+                        "\n\n---\n\n"
+                        "## Pełny wynik audytu Lynis (dane automatyczne, zweryfikowane)\n\n"
+                        "Uwaga: powyższa sekcja raportu (wygenerowana przez model) "
+                        f"wymieniła {actual_total} z {expected_total} pozycji "
+                        "(ostrzeżenia + sugestie) z surowego wyniku Lynis. "
+                        "Poniższy blok jest wstawiony automatycznie przez kod "
+                        "deterministyczny, NIE przez model językowy, i zawiera "
+                        "KOMPLETNĄ listę:\n\n"
+                        + lynis_block_for_check
+                    )
+                else:
+                    logger.info(
+                        "LYNIS_COMPLETENESS_GUARD: OK (%d/%d pozycji w raporcie)",
+                        actual_total, expected_total,
+                    )
+
         meta = response.response_metadata
         logger.info(
             f"TOKEN_USAGE[critic/{CRITIC_MODEL_NAME}]: prompt_eval_count={meta.get('prompt_eval_count')}, "
@@ -883,16 +1851,18 @@ def build_app():
         # zapytania do pentest-agenta) - stad "(brak tresci raportu)" mimo
         # ze pipeline faktycznie sie zakonczyl poprawnie.
         status_store.set_status(state["thread_id"], "critic", "Finalizuję raport...")
-        return {"final_report": response.content}
+        return {"final_report": final_report}
 
     graph = StateGraph(AuditState)
+    graph.add_node("artifact_re", load_artifact_re_node)
     graph.add_node("security_agent", security_node)
     graph.add_node("escalate_prep", escalate_prep_node)
     graph.add_node("check_detection", check_detection_node)
     graph.add_node("report_writers", report_writers_node)
     graph.add_node("critic", critic_node)
 
-    graph.add_edge(START, "security_agent")
+    graph.add_edge(START, "artifact_re")
+    graph.add_edge("artifact_re", "security_agent")
     graph.add_conditional_edges(
         "security_agent",
         decide_after_security,

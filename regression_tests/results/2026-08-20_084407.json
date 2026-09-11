@@ -1,0 +1,20 @@
+[
+  {
+    "name": "stealth_scan_detection",
+    "status": "FAIL",
+    "duration": 327.5,
+    "ground_truth_must_contain": [
+      "8080"
+    ],
+    "ground_truth_must_not_contain": [
+      "jest dostępny z internetu",
+      "jest otwarty na świat",
+      "KRYTYCZNE ryzyko"
+    ],
+    "missing_required_phrases": [
+      "8080"
+    ],
+    "forbidden_phrases_found": [],
+    "full_report": "Based on the provided JSON data from Suricata alerts, here's a structured summary and analysis:\n\n### Summary:\n- **Timestamp Range:** 2026-08-20T08:37:10 to 2026-08-20T08:39:56\n- **Agent:** aiserver\n- **Rule ID:** 86601 (ET INFO and ET SCAN rules)\n- **Level:** All alerts are at level 3, indicating informational or potential suspicious activity.\n- **Alert Types:**\n  - STUN Binding Request/Response\n  - Suspicious inbound to mySQL port 3306\n\n### Detailed Analysis:\n\n#### STUN Binding Requests and Responses:\nThere is a significant number of alerts related to Session Traversal Utilities for NAT (STUN) binding requests and responses. These alerts indicate that the server is receiving numerous STUN requests, which could be legitimate traffic if the server supports such functionality or might suggest probing activity.\n\n- **Timestamps:**\n  - Multiple alerts from 2026-08-20T08:37:10 to 2026-08-20T08:39:56\n  - Example timestamps:\n    - 2026-08-20T08:37:10.194+0000 (STUN Binding Response)\n    - 2026-08-20T08:37:56.045+0000 (STUN Binding Request)\n\n#### Suspicious Inbound Traffic:\nThere are several alerts indicating suspicious inbound traffic targeting the MySQL port (3306). This suggests potential scanning activity or attempts to exploit vulnerabilities on that service.\n\n- **Timestamps:**\n  - Example timestamps:\n    - 2026-08-20T08:38:10.055+0000\n    - 2026-08-20T08:39:48.159+0000\n\n### Recommendations:\n\n#### Verify STUN Traffic:\n- **Determine Legitimacy:** Check if the server is expected to handle STUN traffic for legitimate purposes (e.g., VoIP, video conferencing).\n- **Block Unnecessary Traffic:** If not necessary, consider blocking this type of traffic at the network level.\n\n#### Investigate MySQL Port Scans:\n- **Check Logs and Configurations:**\n  - Review logs and configurations to ensure that the MySQL service is secure.\n  - Ensure that only trusted IP addresses or networks have access to port 3306.\n- **Implement Firewall Rules:**\n  - Restrict access to port 3306 from untrusted sources using firewall rules.\n\n#### Enhance Monitoring:\n- **Additional Monitoring:** Implement additional monitoring and alerting for unusual patterns of STUN traffic or MySQL port activity.\n- **SIEM Tools:** Use Security Information and Event Management (SIEM) tools to correlate events and identify potential malicious activities.\n\n#### Update Rules and Signatures:\n- **Ensure Up-to-date Rules:**\n  - Ensure that Suricata rules and signatures are up-to-date with the latest threat intelligence to detect new types of suspicious behavior.\n  \n### Conclusion:\n\nThe logs indicate a mix of legitimate STUN traffic and potentially suspicious activity targeting MySQL services. Further investigation is required to determine if these alerts represent actual threats or benign activities, followed by appropriate mitigation measures.\n\n---\n\nThis structured summary and analysis should help in understanding the nature of the alerts and taking necessary actions to secure the network environment."
+  }
+]

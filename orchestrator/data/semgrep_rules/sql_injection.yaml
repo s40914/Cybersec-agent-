@@ -1,0 +1,87 @@
+rules:
+  - id: python-sql-string-concat
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Zapytanie SQL zbudowane przez konkatenację stringów z potencjalnie
+      niesanityzowanym wejściem. Użyj zapytań parametryzowanych
+      (cursor.execute(query, params)) zamiast konkatenacji.
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern-either:
+          - pattern: $CUR.execute("..." + $VAR + "...")
+          - pattern: $CUR.execute(f"...{$VAR}...")
+          - pattern: $QUERY = "..." + $VAR + "..."
+          - pattern: $QUERY = f"...{$VAR}..."
+
+  - id: python-sql-percent-format
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Zapytanie SQL zbudowane przez operator %-formatting z bezpośrednim
+      wstawieniem zmiennej. Użyj zapytań parametryzowanych zamiast
+      formatowania stringów.
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern: $CUR.execute("..." % $VAR)
+
+  - id: js-sql-string-concat
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Zapytanie SQL zbudowane przez konkatenację stringów lub template
+      literal z potencjalnie niesanityzowanym wejściem. Użyj zapytań
+      parametryzowanych (placeholders) zamiast konkatenacji.
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern-either:
+          - pattern: $DB.query("..." + $VAR + "...")
+          - pattern: $DB.query(`...${$VAR}...`)
+          - pattern: $QUERY = "..." + $VAR + "..."
+          - pattern: $QUERY = `...${$VAR}...`
+
+  - id: php-sql-string-concat
+    languages: [php]
+    severity: ERROR
+    message: >-
+      Zapytanie SQL zbudowane przez konkatenację stringów z potencjalnie
+      niesanityzowanym wejściem. Użyj PDO z prepared statements zamiast
+      konkatenacji.
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern-either:
+          - pattern: mysqli_query($CONN, "..." . $VAR . "...")
+          - pattern: $QUERY = "..." . $VAR . "...";
+
+  - id: php-sql-unquoted-numeric-context
+    languages: [generic]
+    severity: ERROR
+    message: >-
+      Zmienna wstawiona do zapytania SQL BEZ cudzysłowów wokół niej
+      (kontekst numeryczny). Nawet po użyciu mysqli_real_escape_string()
+      lub podobnej funkcji, escapowanie chroni TYLKO przed przełamaniem
+      cudzysłowu - atakujący może wstrzyknąć dowolny SQL (np. UNION
+      SELECT) bez potrzeby przełamywania stringa. Użyj zapytań
+      parametryzowanych (prepared statements) zamiast wstawiania
+      zmiennej bezpośrednio, niezależnie od wcześniejszego escapowania.
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+    paths:
+      include:
+        - "*.php"
+    patterns:
+      - pattern-regex: '\$\w+\s*=\s*"[^"]*=\s*\$\w+[^\x27"]*;'

@@ -1,0 +1,8 @@
+[
+  {
+    "name": "scan_ports_localhost",
+    "status": "TIMEOUT",
+    "detail": "Przekroczono limit 600s",
+    "duration": 600.3
+  }
+]

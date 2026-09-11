@@ -1,0 +1,48 @@
+[
+  {
+    "name": "audyt_fail2ban",
+    "status": "PASS",
+    "duration": 172.7,
+    "ground_truth_must_contain": [
+      "active"
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Finalny Raport: Sprawdzenie Statusu Usługi Fail2ban\n\n**1. Podsumowanie Stanu Usługi Fail2ban (sshd):**\n\n- **Status wykonania narzędzia:**  \n  Narzędzie `check_fail2ban` zostało wywołane 1 raz i zakończyło się sukcesem (status: ok, returncode: 0).\n\n- **Podsumowanie stanu usługi fail2ban (sshd):**  \n  - Usługa `fail2ban` jest aktywna (`service_active: active`).  \n  - Aktualnie zbanowanych adresów IP: 0.  \n  - Łączna liczba zbanowanych adresów IP od uruchomienia usługi: 0.  \n  - Nieudane próby logowania (aktualne): 0.  \n  - Łączna liczba nieudanych prób logowania: 0.\n\n**2. Szczegóły Zawarte w `stdout`:**\n\n```\nStatus dla więzienia (jail) sshd:\n   - Filtr:\n     |- Aktualnie zbanowane: 0\n     |- Łączna liczba zbanowanych: 0\n     `- Dopasowania dziennika (_SYSTEMD_UNIT=ssh.service + _COMM=sshd): brak danych\n   - Działania:\n     |- Aktualnie zablokowane IP: 0\n     |- Łączna liczba zablokowanych IP: 0\n     `- Lista zbanowanych adresów IP: pusta\n```\n\n**3. Wnioski dotyczące bezpieczeństwa:**  \nUsługa fail2ban działa poprawnie i nie wykryto żadnych zablokowanych ani podejrzanych prób logowania.\n\n### Rozbieżności Wykryte Miedzy Modelami:\n- Brak rozbieżności między modelami. Wszystkie szkice były zgodne ze surowymi danymi i nie zawierały błędów lub halucynacji faktów.\n\n---\n\nW raporcie nie ma sekcji dotyczącej firewalla, skanów portów ani weryfikacji detekcji (np. Suricata/Wazuh). Pełna diagnostyka bezpieczeństwa wymagałaby dodatkowych testów (np. `nmap`, `check_firewall`)."
+  },
+  {
+    "name": "audyt_ssh",
+    "status": "TIMEOUT",
+    "detail": "Przekroczono limit 180s",
+    "duration": 180.8
+  },
+  {
+    "name": "audyt_updates",
+    "status": "TIMEOUT",
+    "detail": "Przekroczono limit 180s",
+    "duration": 181.2
+  },
+  {
+    "name": "audyt_users",
+    "status": "PASS",
+    "duration": 136.5,
+    "ground_truth_must_contain": [],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza Użytkowników Systemowych\n\n**Status narzędzia:**\nNarzędzie `list_users` zostało wykonane 1 raz.\n\n**Znalezione użytkownicy:**\n- **repas (uid=1000, home=/home/repas, shell=/bin/bash)**\n  - **Grupa sudo:** Członek grupy `sudo`.\n\n### Problemy bezpieczeństwa:\n- Użytkownik `repas` jest członkiem grupy `sudo`, co oznacza, że ma pełne uprawnienia administracyjne na systemie. Upewnij się, że ten użytkownik jest odpowiedzialny i że hasło jest silne i unikalne.\n\n### Wnioski:\n- System zawiera jednego użytkownika (`repas`) z dostępem sudo. Należy regularnie sprawdzać bezpieczeństwo kont użytkowników oraz upewniać się, że tylko zaufani użytkownicy mają takie uprawnienia.\n\n### Dodatkowe uwagi:\n- Brak dodatkowych informacji w sekcji detekcji (Suricata/Wazuh), ponieważ narzędzie `list_users` nie generuje alertów IDS/IPS.\n- Brak wykrytych problemów związanych z konfiguracją użytkowników na podstawie dostarczonych danych.\n\n### Podsumowanie:\nKonfiguracja użytkowników systemowych jest poprawna i nie wykazuje oznak nadmiernych uprawnień lub zbędnych kont. Zaleca się jednak regularne przeglądy listy użytkowników (np. co kwartał) oraz monitorowanie aktywności konta `repas` pod kątem podejrzanych działań.\n\n### Rozbieżności wykryte między modelami:\n- Brak rozbieżności w raportach, wszystkie modele zgadzają się ze źródłowymi danymi.\n\n::finding[medium]{concern=\"weak_auth_candidate\" title=\"Użytkownik z uprawnieniami sudo\"}\nUżytkownik `repas` jest członkiem grupy `sudo`, co oznacza, że ma pełne uprawnienia administracyjne na systemie. Upewnij się, że hasło użytkownika jest silne i unikalne.\n::"
+  },
+  {
+    "name": "scan_ports_localhost",
+    "status": "TIMEOUT",
+    "detail": "Przekroczono limit 180s",
+    "duration": 180.7
+  },
+  {
+    "name": "whatweb_dvwa",
+    "status": "TIMEOUT",
+    "detail": "Przekroczono limit 180s",
+    "duration": 180.7
+  }
+]

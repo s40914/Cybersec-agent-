@@ -25,6 +25,20 @@ async def api_models():
         return JSONResponse(content=resp.json(), status_code=resp.status_code)
 
 
+@app.get("/api/findings")
+async def api_findings():
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.get(f"{ORCHESTRATOR_URL}/findings")
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
+@app.get("/api/findings/{finding_id}")
+async def api_finding(finding_id: str):
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.get(f"{ORCHESTRATOR_URL}/findings/{finding_id}")
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
 @app.get("/api/status/{thread_id}")
 async def api_status(thread_id: str):
     async with httpx.AsyncClient(timeout=15.0) as client:

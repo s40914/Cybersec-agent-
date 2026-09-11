@@ -8,9 +8,48 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
+
+<div class="splash-overlay" id="splash-overlay">
+  <div class="splash-card">
+    <div class="splash-logo">
+      <div class="splash-logo-mark">&gt;_</div>
+      <div class="splash-logo-text">
+        <div class="splash-title">Cybersec Agent</div>
+        <div class="splash-subtitle">Platforma audytu i testów bezpieczeństwa</div>
+      </div>
+    </div>
+
+    <div class="splash-warning">
+      <span class="splash-warning-icon">⚠</span>
+      <span class="splash-warning-text">
+        <strong>Ta platforma udostępnia narzędzia ofensywne</strong> (m.in. skanery portów,
+        testy podatności, testy siły haseł). W niepowołanych rękach lub użyte przeciwko
+        systemom bez wyraźnej zgody właściciela mogą doprowadzić do utraty danych,
+        przerwania działania usług lub naruszenia prawa.
+      </span>
+    </div>
+
+    <div class="splash-body">
+      <p>Narzędzia diagnostyczne służą do audytu własnej infrastruktury. Narzędzia
+      ofensywne (pentesting) wymagają jawnego wyboru i, w części przypadków,
+      dodatkowej autoryzacji hasłem administratora.</p>
+      <p>Używasz tej platformy na własną odpowiedzialność. Upewnij się, że masz prawo
+      testować wskazane cele.</p>
+    </div>
+
+    <label class="splash-consent">
+      <input type="checkbox" id="splash-consent-checkbox">
+      <span class="splash-consent-label">Rozumiem powyższe ryzyko i przyjmuję pełną
+      odpowiedzialność za sposób wykorzystania tej platformy.</span>
+    </label>
+
+    <button class="splash-enter-btn" id="splash-enter-btn" disabled>Rozumiem, wchodzę</button>
+  </div>
+</div>
+
 <div class="app">
 
   <aside class="sidebar">
@@ -42,6 +81,21 @@
       <div class="tools-actions">
         <button id="tools-all" class="btn-link">zaznacz wszystkie</button>
         <button id="tools-none" class="btn-link">wyczyść</button>
+      </div>
+    </div>
+
+    <div class="side-section findings-section">
+      <div class="side-label findings-section-title">
+        <span>FINDINGI</span>
+        <button type="button" id="findings-refresh" class="findings-refresh" title="Odśwież">↻</button>
+      </div>
+
+      <div id="findings-summary" class="findings-summary">
+        <div class="findings-loading">ładowanie…</div>
+      </div>
+
+      <div id="findings-list" class="findings-list">
+        <div class="findings-loading">ładowanie…</div>
       </div>
     </div>
 
@@ -82,9 +136,71 @@
       <button type="submit" class="composer-send" id="composer-send">wyślij</button>
     </form>
 
+    <div class="admin-auth-panel">
+      <button type="button" class="admin-auth-toggle" id="admin-auth-toggle">🔒 Autoryzacja administratora</button>
+      <div class="admin-auth-input-wrap" id="admin-auth-wrap">
+        <input type="password" class="admin-auth-input" id="admin-auth-input" placeholder="hasło administratora dla tej wiadomości" autocomplete="off">
+        <span class="admin-auth-hint">wymagane tylko dla narzędzi ograniczonych</span>
+      </div>
+    </div>
+
+      <div id="finding-detail-overlay" class="finding-detail-overlay hidden">
+      <div class="finding-detail-panel">
+        <div class="finding-detail-header">
+          <div>
+            <div class="finding-detail-kicker">FINDING</div>
+            <div id="finding-detail-title" class="finding-detail-title">—</div>
+          </div>
+          <button type="button" id="finding-detail-close" class="finding-detail-close">×</button>
+        </div>
+
+        <div id="finding-detail-content" class="finding-detail-content">
+          <div class="findings-loading">ładowanie…</div>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 
+<script>
+(function () {
+  const overlay = document.getElementById("splash-overlay");
+  const checkbox = document.getElementById("splash-consent-checkbox");
+  const enterBtn = document.getElementById("splash-enter-btn");
+  // Ostrzeżenie jest pokazywane przy każdym załadowaniu strony.
+  // Nie zapisujemy akceptacji w localStorage, ponieważ z aplikacji
+  // może korzystać wiele osób na tym samym komputerze.
+  checkbox.addEventListener("change", () => {
+    enterBtn.disabled = !checkbox.checked;
+  });
+
+  enterBtn.addEventListener("click", () => {
+    if (!checkbox.checked) return;
+    overlay.classList.add("hidden");
+  });
+})();
+
+(function () {
+  const toggle = document.getElementById("admin-auth-toggle");
+  const wrap = document.getElementById("admin-auth-wrap");
+  const input = document.getElementById("admin-auth-input");
+
+  toggle.addEventListener("click", () => {
+    const willShow = !wrap.classList.contains("visible");
+    wrap.classList.toggle("visible", willShow);
+    toggle.classList.toggle("active", willShow);
+    if (willShow) input.focus();
+  });
+
+  // Eksponujemy hasło globalnie, zeby app.js moglo je odczytac przy
+  // wysylaniu wiadomosci - nie trzymamy go nigdzie indziej (nie
+  // localStorage, nie sessionStorage), tylko w polu inputu w DOM.
+  window.getAdminPasswordForRequest = function () {
+    const val = input.value;
+    return val && val.length > 0 ? val : null;
+  };
+})();
+</script>
 <script src="app.js?v=1786222638"></script>
 </body>
 </html>

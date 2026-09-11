@@ -1,0 +1,8 @@
+[
+  {
+    "name": "stealth_scan_detection",
+    "status": "TIMEOUT",
+    "detail": "Przekroczono limit 900s",
+    "duration": 900.2
+  }
+]

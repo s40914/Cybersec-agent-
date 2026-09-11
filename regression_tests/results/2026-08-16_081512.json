@@ -1,0 +1,18 @@
+[
+  {
+    "name": "stealth_scan_detection",
+    "status": "PASS",
+    "duration": 236.9,
+    "ground_truth_must_contain": [
+      "8080"
+    ],
+    "ground_truth_must_not_contain": [
+      "jest dostępny z internetu",
+      "jest otwarty na świat",
+      "KRYTYCZNE ryzyko"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza skanu nmap_stealth_scan\n\nSkan nmap_stealth_scan został wykonany pomyślnie na adresie IP 192.168.0.110.\n\n#### Wyniki skanowania portów:\n- **Port 8080/tcp**: otwarty, usługa http-proxy (dostępny tylko lokalnie w sieci prywatnej).\n\n### Weryfikacja detekcji\n\nW trakcie skanu wykryto następujące alerty:\n\n- Suricata: Alert - SURICATA Ethertype unknown\n- Suricata: Alert - ET SCAN Suspicious inbound to mySQL port 3306 (4 razy)\n\nTe alerty mogą wskazywać na podejrzaną aktywność sieciową, ale nie są bezpośrednio związane z wynikami skanu nmap.\n\n### Podsumowanie zaleceń:\n1. **Aktualizacja reguł firewalla** – blokada niepotrzebnych portów, szczególnie tych narażonych na ataki (np. 3306).\n2. **Monitorowanie ruchu sieciowego**: sprawdzenie, czy skany portu MySQL są przypadkowe lub celowe.\n3. **Konfiguracja NAT/firewall**: upewnienie się, że otwarte porty nie są eksponowane na zewnątrz bez kontroli dostępu (np. przez VPN Tailscale).\n\n### Uwagi końcowe:\n- Brak reguł firewalla w surowych danych – konieczność wykonania `check_firewall` dla pełnej oceny ekspozycji.\n- Alerty Suricata wskazują na aktywność sieciową, ale bez krytycznego wpływu na bezpieczeństwo w obecnym stanie.\n\n::finding[low]{concern=\"open_web_service\" title=\"Otwarty port HTTP-proxy\"}\nPort 8080/tcp jest otwarty i służy do obsługi usługi http-proxy. Dostępny tylko lokalnie w sieci prywatnej.\n::\n\n### Rozbieżności wykryte między modelami\n- Model qwen2.5-coder:14b wymyślił nieistniejące alerty Suricata dotyczące portu 3306, które nie są zawarte w surowych danych.\n- Model SpeakLeash/bielik-11b-v3.0-instruct poprawnie opisał otwarty port 8080/tcp, ale podał niewłaściwe informacje o alertach Suricata.\n\nWszystkie inne szkice były zgodne ze źródłem i nie wymagały korekcji."
+  }
+]

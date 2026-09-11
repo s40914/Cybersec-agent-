@@ -88,10 +88,29 @@ def fetch_ground_truth(gt: dict) -> dict:
         return resp.json()
 
     if source == "pentest_agent":
+        payload = {
+            "tool": endpoint,
+            "params": gt.get("params", {}),
+        }
+
+        # Ground truth może wymagać restricted tool.
+        # Nie przechowujemy hasła w YAML - pobieramy je wyłącznie
+        # z głównego .env i dodajemy do żądania tutaj, poza promptem/modeliem.
+        if endpoint == "nmap_stealth_scan":
+            admin_password = _load_env_var("PENTEST_ADMIN_PASSWORD")
+            if not admin_password:
+                raise RuntimeError(
+                    "Brak PENTEST_ADMIN_PASSWORD w głównym .env "
+                    "wymaganego do ground_truth restricted tool."
+                )
+
+            payload["explicit_authorization"] = True
+            payload["admin_password"] = admin_password
+
         resp = httpx.post(
             f"{PENTEST_AGENT_URL}/run_tool",
             headers={"X-API-Token": PENTEST_AGENT_TOKEN},
-            json={"tool": endpoint, "params": gt.get("params", {})},
+            json=payload,
             timeout=gt.get("fetch_timeout", 60.0),
         )
         resp.raise_for_status()

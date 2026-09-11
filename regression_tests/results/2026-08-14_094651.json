@@ -1,0 +1,45 @@
+[
+  {
+    "name": "scan_ports_localhost",
+    "status": "PASS",
+    "duration": 558.3,
+    "ground_truth_must_contain": [
+      "25",
+      "53",
+      "68",
+      "80",
+      "323",
+      "514",
+      "1514",
+      "1515",
+      "2019",
+      "2847",
+      "3001",
+      "5353",
+      "8010",
+      "8080",
+      "8081",
+      "8082",
+      "8083",
+      "8501",
+      "8765",
+      "8766",
+      "9200",
+      "9443",
+      "11434",
+      "41641",
+      "43951",
+      "50830",
+      "55000",
+      "64146"
+    ],
+    "ground_truth_must_not_contain": [
+      "dostępny z internetu",
+      "otwarty na świat",
+      "KRYTYCZNE"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Raport o Analizie Portów\n\n#### Weryfikacja liczby wywołań narzędzi w tym przebiegu:\n- Narzędzie `scan_nmap` zostało wykonane 1 raz.\n\n#### Nasłuchujące porty na hostie:\n\nPoniżej znajduje się lista wszystkich nasłuchujących portów z identyfikowanymi procesami i adresami, które zostały wykryte przez narzędzie `ss -tulpn`.\n\n1. port 25/tcp na 127.0.0.1:25 (proces: master)\n2. port 25/tcp na [::1]:25 (proces: master)\n3. port 53/tcp na 127.0.0.53%lo:53 (proces: systemd-resolve)\n4. port 53/tcp na 127.0.0.54:53 (proces: systemd-resolve)\n5. port 53/udp na 127.0.0.54:53 (proces: systemd-resolve)\n6. port 53/udp na 127.0.0.53%lo:53 (proces: systemd-resolve)\n7. port 68/udp na 192.168.0.110%eno1:68 (proces: systemd-network)\n8. port 80/tcp na *:80 (proces: caddy)\n9. port 323/udp na 127.0.0.1:323 (proces: chronyd)\n10. port 323/udp na [::1]:323 (proces: chronyd)\n11. port 514/udp na 0.0.0.0:514 (proces: docker-proxy)\n12. port 514/udp na [::]:514 (proces: docker-proxy)\n13. port 1514/tcp na 0.0.0.0:1514 (proces: docker-proxy)\n14. port 1514/tcp na [::]:1514 (proces: docker-proxy)\n15. port 1515/tcp na 0.0.0.0:1515 (proces: docker-proxy)\n16. port 1515/tcp na [::]:1515 (proces: docker-proxy)\n17. port 2019/tcp na 127.0.0.1:2019 (proces: caddy)\n18. port 2847/tcp na 0.0.0.0:2847 (proces: sshd)\n19. port 2847/tcp na [::]:2847 (proces: sshd)\n20. port 3001/tcp na 127.0.0.1:3001 (proces: docker-proxy)\n21. port 3001/tcp na 192.168.0.110:3001 (proces: docker-proxy)\n22. port 3001/tcp na 100.120.148.104:3001 (proces: docker-proxy)\n23. port 5353/udp na 0.0.0.0:5353 (proces: avahi-daemon)\n24. port 5353/udp na [::]:5353 (proces: avahi-daemon)\n25. port 8010/tcp na 127.0.0.1:8010 (proces: docker-proxy)\n26. port 8080/tcp na 0.0.0.0:8080 (proces: docker-proxy)\n27. port 8080/tcp na [::]:8080 (proces: docker-proxy)\n28. port 8081/tcp na 0.0.0.0:8081 (proces: docker-proxy)\n29. port 8081/tcp na [::]:8081 (proces: docker-proxy)\n30. port 8082/tcp na 127.0.0.1:8082 (proces: docker-proxy)\n31. port 8083/tcp na 0.0.0.0:8083 (proces: docker-proxy)\n32. port 8083/tcp na [::]:8083 (proces: docker-proxy)\n33. port 8501/tcp na 0.0.0.0:8501 (proces: docker-proxy)\n34. port 8501/tcp na [::]:8501 (proces: docker-proxy)\n35. port 8765/tcp na 0.0.0.0:8765 (proces: uvicorn)\n36. port 8766/tcp na 127.0.0.1:8766 (proces: docker-proxy)\n37. port 9200/tcp na 0.0.0.0:9200 (proces: docker-proxy)\n38. port 9200/tcp na [::]:9200 (proces: docker-proxy)\n39. port 9443/tcp na 0.0.0.0:9443 (proces: docker-proxy)\n40. port 9443/tcp na [::]:9443 (proces: docker-proxy)\n41. port 11434/tcp na 192.168.0.110:11434 (proces: docker-proxy)\n42. port 11434/tcp na 100.120.148.104:11434 (proces: docker-proxy)\n43. port 11434/tcp na 127.0.0.1:11434 (proces: docker-proxy)\n44. port 41641/udp na 0.0.0.0:41641 (proces: tailscaled)\n45. port 41641/udp na [::]:41641 (proces: tailscaled)\n46. port 43951/tcp na 127.0.0.1:43951 (proces: containerd)\n47. port 50830/tcp na 100.120.148.104:50830 (proces: tailscaled)\n48. port 55000/tcp na 0.0.0.0:55000 (proces: docker-proxy)\n49. port 55000/tcp na [::]:55000 (proces: docker-proxy)\n50. port 64146/tcp na [fd7a:115c:a1e0::fa01:94c4]:64146 (proces: tailscaled)\n\n#### Klasyfikacja Portów\n\nDla każdego z powyższych portów, nie ma wystarczających danych do oceny ekspozycji sieciowej. Zgodnie z zasadami analizy, każda z tych usług jest nasłuchująca lokalnie i rzeczywista ekspozycja nie jest znana.\n\n**Klasyfikacja dla każdego portu:**\n- **nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu)**\n\n#### Podsumowanie\nWyniki analizy pokazują, że na danym hostie istnieje 50 portów nasłuchujących. Bez dodatkowych informacji o zapory i ekspozycji sieciowej nie można ocenić ryzyka związane z otwartością tych portów dla internetu.\n\nAby uzyskać bardziej szczegółowe informacje, sugeruję wykonanie dodatkowego przebiegu z użyciem narzędzia `check_firewall` lub `full_audit`.\n\n### Rozbieżności wykryte między modelami\nWszystkie szkice były zgodne ze źródłem i nie wymagały poprawek."
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "name": "audyt_users",
+    "status": "PASS",
+    "duration": 138.5,
+    "ground_truth_must_contain": [
+      "repas"
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza listy użytkowników systemowych\n\n**Zweryfikowane fakty:**\n\n- Liczba użytkowników (human_users): 1\n- Lista użytkowników:\n  - repas (uid=1000, home=/home/repas, shell=/bin/bash)\n- Członkowie grupy sudo (sudo_group_members): repas\n\n### Problemy bezpieczeństwa:\n\n- Użytkownik \"repas\" jest członkiem grupy sudo. To oznacza, że użytkownik ten ma pełne uprawnienia administracyjne na systemie.\n  - Jeśli konto użytkownika \"repas\" zostanie naruszone lub jeśli użytkownik popełni błąd, może to prowadzić do nieautoryzowanego dostępu i modyfikacji systemu.\n\n### Podsumowanie:\n\n- System zawiera jednego użytkownika systemowego: \"repas\".\n- Użytkownik \"repas\" jest członkiem grupy sudo, co daje mu pełne uprawnienia administracyjne.\n- Warto zwrócić uwagę na bezpieczeństwo konta użytkownika \"repas\", szczególnie jeśli jest często używany do logowania się na system.\n\n::finding[medium]{concern=\"weak_auth_candidate\" title=\"Członek grupy sudo\"}\nUżytkownik \"repas\" jest członkiem grupy sudo, co daje mu pełne uprawnienia administracyjne. Brak dodatkowych kont użytkownika systemowego może zwiększać ryzyko związane z naruszeniem tego jedynego konta.\n::\n\n### Rozbieżności wykryte między modelami:\n- Nie wykryto żadnych rozbieżności między modelami.\n\nWszystkie fakty w raporcie są potwierdzone na podstawie surowych danych JSON. Brak dodatkowych problemów bezpieczeństwa w oparciu o przesłane dane."
+  }
+]

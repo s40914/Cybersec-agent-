@@ -1,0 +1,133 @@
+[
+  {
+    "name": "audyt_fail2ban",
+    "status": "PASS",
+    "duration": 156.7,
+    "ground_truth_must_contain": [
+      [
+        "active",
+        "aktywny",
+        "aktywna",
+        "działa"
+      ]
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "Na podstawie surowych danych i analizy trzech różnych szkiców raportów, oto finalny raport po polsku:\n\n### Raport diagnostyczny: Status usługi fail2ban\n\n**Status usługi Fail2ban:**\n- Usługa fail2ban jest aktywna (`service_active: active`).\n\n**Parametry fail2ban dla jail sshd:**\n- Aktualnie zbanowanych adresów IP: 0\n- Łączna liczba zbanowanych adresów IP od startu: 0\n- Aktualnie nieudanych prób logowania: 0\n- Łączna liczba nieudanych prób logowania od startu: 0\n\n**Wnioski dotyczące bezpieczeństwa:**\nUsługa fail2ban jest poprawnie skonfigurowana i aktywna, bez obecności zbanowanych adresów IP czy nieudanych prób logowania. Mechanizm ochrony przed atakami brute force na SSH działa prawidłowo.\n\n**Zalecenia:**\n- Kontynuuj monitorowanie ruchu SSH, aby w razie wykrycia podejrzanych prób logowania fail2ban mógł odpowiednio zareagować.\n- Regularnie sprawdzaj konfigurację fail2ban, aby upewnić się, że jest dostosowana do aktualnych potrzeb bezpieczeństwa (np. progi liczby nieudanych prób logowania).\n\n**Dodatkowe informacje:**\nNarzędzie `check_fail2ban` zostało wywołane 1 raz w tym przebiegu diagnostycznym, co potwierdza aktualność danych.\n\n### Rozbieżności wykryte między modelami\nWszystkie modele były zgodne ze surowymi danymi i nie podały błędnych informacji."
+  },
+  {
+    "name": "audyt_ssh",
+    "status": "PASS",
+    "duration": 188.8,
+    "ground_truth_must_contain": [
+      "2847",
+      "yes"
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Analiza konfiguracji SSH\n\n**Konfiguracja SSH:**\n- **Port SSH:** 2847\n- **PasswordAuthentication:** yes (logowanie hasłem jest włączone)\n- **PermitRootLogin:** prohibit-password (zakłóca logowanie roota za pomocą hasła, ale pozwala na logowanie za pomocą kluczy SSH)\n- **PubkeyAuthentication:** yes (uwierzytelnianie kluczem publicznym jest włączone)\n- **MaxAuthTries:** 6 (maksymalna liczba prób uwierzytelnienia wynosi 6)\n- **X11Forwarding:** yes (włączone przekierowywanie X11)\n- **AllowTcpForwarding:** yes (włączone przekierowywanie TCP)\n\n**Uwagi i problemy bezpieczeństwa:**\n1. **Logowanie hasłem jest włączone (PasswordAuthentication=yes):**\n   - To zwiększa podatność na ataki brute-force, szczególnie jeśli fail2ban jest nieaktywny lub port SSH jest dostępny z całego internetu.\n   \n2. **Włączone przekierowywanie X11 i TCP:**\n   - Przekierowywanie X11 może być używane do uzyskania dostępu do interfejsów graficznych na zdalnym serwerze, co może być potencjalnie niebezpieczne.\n   - Włączone przekierowywanie TCP może pozwolić na tworzenie tuneli SSH przez porty TCP, co może być używane do ukrywania ruchu sieciowego.\n\n**Zalecenia:**\n1. **Wyłączenie logowania hasłem (PasswordAuthentication=no):**\n   - Jeśli to możliwe, wyłącz logowanie hasłem i używaj tylko uwierzytelniania kluczem publicznym.\n   \n2. **Aktywacja fail2ban:**\n   - Skonfiguruj fail2ban, aby monitorować próby logowania SSH i blokować adresy IP po wielu nieudanych próbach.\n\n3. **Ograniczenie portów przekierowywania:**\n   - Jeśli przekierowywanie X11 i TCP są niepotrzebne, rozważ je wyłączenie lub ograniczenie do konkretnych użytkowników lub grup.\n\n4. **Zmiana portu SSH:**\n   - Użycie niestandardowego portu jest dobrym pomysłem, ale należy pamiętać o regularnych kontroli bezpieczeństwa i monitorowaniu ruchu na tym porcie.\n\n### Weryfikacja detekcji (Wazuh/Suricata)\n- Brak informacji o wykryciach w tej sekcji.\n\n::finding[medium]{concern=\"weak_auth_candidate\" title=\"Logowanie hasłem jest włączone\"}\nLogowanie hasłem jest włączone, co zwiększa ryzyko ataków brute-force.\n::\n\n### Rozbieżności wykryte między modelami\n- Brak rozbieżności wykrytych między modelami. Wszystkie szkice były zgodne ze źródłem danych.\n\n---\n\nWyniki analizy pokazują, że konfiguracja SSH zawiera istotne luki bezpieczeństwa związane z włączonym logowaniem hasłem i przekierowywanie X11 oraz TCP. Wszystkie szkice były zgodne ze źródłowymi danymi, a brak rozbieżności pozwala na zaakceptowanie sugerowanych zaleceń bez dodatkowych wątpliwości."
+  },
+  {
+    "name": "audyt_updates",
+    "status": "PASS",
+    "duration": 140.8,
+    "ground_truth_must_contain": [
+      "21"
+    ],
+    "ground_truth_must_not_contain": [
+      "brak zaległości",
+      "nie ma dostępnych aktualizacji",
+      "system jest aktualny",
+      "wszystko zaktualizowane"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "Na podstawie surowych danych i analizy trzech różnych szkiców raportu, oto finalny raport diagnostyczny:\n\n### Raport diagnostyczny\n\n#### Aktualizacje systemu\n\n- Liczba wszystkich dostępnych aktualizacji: 21\n- Liczba aktualizacji bezpieczenstwa: 0\n- Liczba pozostalych aktualizacji: 21\n\n**Problem bezpieczeństwa:** System wymaga aktualizacji, ale żadne z nich nie są krytyczne dla bezpieczeństwa. Wszystkie dostępne aktualizacje należą do kategorii \"inne\" i nie dotyczą poprawek bezpieczeństwa.\n\n### Szczegółowa analiza:\n- Dostępnych jest 21 aktualizacji systemu, z których żadna nie dotyczy bezpieczeństwa.\n- Brak aktualizacji bezpieczeństwa na liście (security_updates_count = 0).\n\n### Zalecenia:\n- **Zainstaluj dostępne aktualizacje** (21 pozycji), aby zapewnić stabilność i optymalną wydajność systemu.\n\n### Dodatkowe informacje (z sekcji weryfikacji detekcji):\n- Systemy detekcji (Wazuh/Suricata) nie wygenerowały żadnych alertów związanych z aktualizacjami lub lukami bezpieczeństwa.\n\n---\n\n**Koniec raportu.**\n\n### Rozbieżności wykryte między modelami\nNie wykryto rozbieżności między modelami w tej analizie. Wszystkie szkice były zgodne ze surowymi danymi i nie zawierały błędów lub halucynacji.\n\n---\n\nW tym raporcie uwzględniono jedynie fakty potwierdzone w surowych danych, a wszelkie dodatkowe informacje, które nie miały podstaw w surowych wynikach, zostały usunięte."
+  },
+  {
+    "name": "audyt_users",
+    "status": "PASS",
+    "duration": 150.6,
+    "ground_truth_must_contain": [
+      "repas"
+    ],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Raport diagnostyczny\n\n#### Analiza użytkowników systemowych\n\n- **Liczba użytkowników (human_users):** 1\n- **Lista użytkowników:**\n  - **repas:** UID=1000, katalog domowy=/home/repas, powłoka=/bin/bash\n- **Członkowie grupy sudo (sudo_group_members):**\n  - repas\n\n### Ocena bezpieczeństwa:\n- Niska liczba użytkowników: Tylko jeden użytkownik (repas), co jest dobrą praktyką ograniczającą powierzchnię ataku.\n- Członek sudo: Użytkownik \"repas\" ma dostęp do uprawnień administratora, co jest standardowe i nie stanowi bezpośredniego zagrożenia, o ile nie są nadużywane.\n\n### Zalecenia:\n- Monitoruj aktywność użytkownika repas, szczególnie jeśli wykonuje operacje wymagające uprawnień sudo.\n- Rozważ ograniczenie dostępu do niektórych poleceń sudo za pomocą pliku `/etc/sudoers`, aby zminimalizować ryzyko nadużyć.\n\n### Dodatkowe informacje (weryfikacja detekcji):\nNie wykryto żadnych problemów bezpieczeństwa w oparciu o dostarczone dane. Brak danych o alertach z systemów IDS/IPS, co oznacza, że nie wykryto podejrzanej aktywności związanej z użytkownikami.\n\n### Podsumowanie:\nKonfiguracja użytkowników jest poprawna, ale warto regularnie przeglądać uprawnienia sudo i logi systemowe, aby wykryć ewentualne nieprawidłowości.\n\n::finding[low]{concern=\"weak_auth_candidate\" title=\"Użytkownik z uprawnieniami sudo\"}\nUżytkownik \"repas\" jest członkiem grupy sudo, co może być potencjalnym ryzykiem bezpieczeństwa, jeśli nie ma odpowiednich ograniczeń.\n::\n\n### Rozbieżności wykryte między modelami\n- Model qwen2.5-coder:14b podał weryfikację detekcji bez dodatkowych informacji o alertach z systemów IDS/IPS, co jest poprawne, ale nie zawierał konkretnych zaleceń.\n- Model SpeakLeash/bielik-11b-v3.0-instruct:Q5_K_M podał szczegółowe informacje o użytkowniku i grupie sudo, ale nie wymienił konkretnego ryzyka związanej z uprawnieniami sudo bez ograniczeń.\n\nWszystkie szkice były zgodne ze źródłem w kwestii liczby użytkowników i ich uprawnień."
+  },
+  {
+    "name": "firewall_exposure_detection",
+    "status": "PASS",
+    "duration": 763.1,
+    "ground_truth_must_contain": [],
+    "ground_truth_must_not_contain": [],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Raport Analizy Konfiguracji Firewalla\n\n#### Reguły Firewalla\n\nOto lista reguł firewalla z podanym poziomem ryzyka dla każdego wpisu:\n\n1. **Anywhere on tailscale0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n2. **22 on tailscale0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n3. **11434 on tailscale0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n4. **11434 ALLOW IN 192.168.0.0/24** -> RYZYKO: NISKIE (ograniczone do sieci prywatnej 192.168.0.0/24)\n5. **8080 ALLOW IN 192.168.0.0/24** -> RYZYKO: NISKIE (ograniczone do sieci prywatnej 192.168.0.0/24)\n6. **8080 on tailscale0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n7. **3001 on tailscale0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n8. **8188 on tailscale0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n9. **3010 on tailscale0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n10. **3001 DENY IN Anywhere** -> RYZYKO: BRAK (reguła blokuje ruch, nie stanowi ryzyka)\n11. **22/tcp DENY IN Anywhere** -> RYZYKO: BRAK (reguła blokuje ruch, nie stanowi ryzyka)\n12. **7860/tcp on tailscale0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n13. **5901 on tailscale0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n14. **11434 on docker0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu docker0)\n15. **8765/tcp ALLOW IN 172.19.0.0/16** -> RYZYKO: NISKIE (ograniczone do sieci prywatnej 172.19.0.0/16)\n16. **8501 ALLOW IN 192.168.0.0/24** -> RYZYKO: NISKIE (ograniczone do sieci prywatnej 192.168.0.0/24)\n17. **2847 on tailscale0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n18. **8501 on tailscale0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n19. **8081/tcp ALLOW IN 172.19.0.0/16** -> RYZYKO: NISKIE (ograniczone do sieci prywatnej 172.19.0.0/16)\n20. **2847 on eno1 ALLOW IN 192.168.0.0/24** -> RYZYKO: NISKIE (ograniczone do sieci prywatnej 192.168.0.0/24)\n21. **80/tcp ALLOW IN 192.168.0.0/24** -> RYZYKO: NISKIE (ograniczone do sieci prywatnej 192.168.0.0/24)\n22. **80/tcp on tailscale0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n23. **8083/tcp ALLOW IN 172.19.0.0/16** -> RYZYKO: NISKIE (ograniczone do sieci prywatnej 172.19.0.0/16)\n24. **2847/tcp on tailscale0 ALLOW IN Anywhere** -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n25. **2847/tcp ALLOW IN 100.0.0.0/8** -> RYZYKO: DO WERYFIKACJI (nietypowy wzorzec reguły, wymaga ręcznej oceny)\n26. **Anywhere (v6) on tailscale0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n27. **22 (v6) on tailscale0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n28. **11434 (v6) on tailscale0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n29. **8080 (v6) on tailscale0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n30. **3001 (v6) on tailscale0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n31. **8188 (v6) on tailscale0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n32. **3010 (v6) on tailscale0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n33. **22/tcp (v6) DENY IN Anywhere (v6)** [IPv6] -> RYZYKO: BRAK (reguła blokuje ruch, nie stanowi ryzyka)\n34. **7860/tcp (v6) on tailscale0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n35. **5901 (v6) on tailscale0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n36. **11434 (v6) on docker0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu docker0)\n37. **2847 (v6) on tailscale0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n38. **8501 (v6) on tailscale0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n39. **80/tcp (v6) on tailscale0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n40. **2847/tcp (v6) on tailscale0 ALLOW IN Anywhere (v6)** [IPv6] -> RYZYKO: NISKIE (ograniczone do interfejsu tailscale0)\n\n#### Nasłuchujące Porty\n\nOto lista portów, które są w stanie nasłuchiwać:\n\n1. **port 25/tcp na 127.0.0.1:25** (proces: master)\n2. **port 25/tcp na [::1]:25** (proces: master)\n3. **port 53/tcp na 127.0.0.54:53** (proces: systemd-resolve)\n4. **port 53/tcp na 127.0.0.53%lo:53** (proces: systemd-resolve)\n5. **port 53/udp na 127.0.0.54:53** (proces: systemd-resolve)\n6. **port 53/udp na 127.0.0.53%lo:53** (proces: systemd-resolve)\n7. **port 68/udp na 192.168.0.110%eno1:68** (proces: systemd-network)\n8. **port 80/tcp na *:80** (proces: caddy)\n9. **port 323/udp na 127.0.0.1:323** (proces: chronyd)\n10. **port 323/udp na [::1]:323** (proces: chronyd)\n11. **port 514/udp na 0.0.0.0:514** (proces: docker-proxy)\n12. **port 514/udp na [::]:514** (proces: docker-proxy)\n13. **port 1514/tcp na 0.0.0.0:1514** (proces: docker-proxy)\n14. **port 1514/tcp na [::]:1514** (proces: docker-proxy)\n15. **port 1515/tcp na 0.0.0.0:1515** (proces: docker-proxy)\n16. **port 1515/tcp na [::]:1515** (proces: docker-proxy)\n17. **port 2019/tcp na 127.0.0.1:2019** (proces: caddy)\n18. **port 2847/tcp na 0.0.0.0:2847** (proces: sshd)\n19. **port 2847/tcp na [::]:2847** (proces: sshd)\n20. **port 5353/udp na 0.0.0.0:5353** (proces: avahi-daemon)\n21. **port 5353/udp na [::]:5353** (proces: avahi-daemon)\n22. **port 8010/tcp na 127.0.0.1:8010** (proces: docker-proxy)\n23. **port 8080/tcp na 0.0.0.0:8080** (proces: docker-proxy)\n24. **port 8080/tcp na [::]:8080** (proces: docker-proxy)\n25. **port 8081/tcp na 0.0.0.0:8081** (proces: docker-proxy)\n26. **port 8081/tcp na [::]:8081** (proces: docker-proxy)\n27. **port 8082/tcp na 127.0.0.1:8082** (proces: docker-proxy)\n28. **port 8083/tcp na 0.0.0.0:8083** (proces: docker-proxy)\n29. **port 8083/tcp na [::]:8083** (proces: docker-proxy)\n30. **port 8501/tcp na 0.0.0.0:8501** (proces: docker-proxy)\n31. **port 8501/tcp na [::]:8501** (proces: docker-proxy)\n32. **port 8765/tcp na 0.0.0.0:8765** (proces: uvicorn)\n33. **port 8766/tcp na 127.0.0.1:8766** (proces: docker-proxy)\n34. **port 9200/tcp na 0.0.0.0:9200** (proces: docker-proxy)\n35. **port 9200/tcp na [::]:9200** (proces: docker-proxy)\n36. **port 9443/tcp na 0.0.0.0:9443** (proces: docker-proxy)\n37. **port 9443/tcp na [::]:9443** (proces: docker-proxy)\n38. **port 11434/tcp na 127.0.0.1:11434** (proces: docker-proxy)\n39. **port 41489/tcp na 127.0.0.1:41489** (proces: containerd)\n40. **port 41641/udp na 0.0.0.0:41641** (proces: tailscaled)\n41. **port 41641/udp na [::]:41641** (proces: tailscaled)\n42. **port 50980/tcp na [fd7a:115c:a1e0::3b37:e739]:50980** (proces: tailscaled)\n43. **port 55000/tcp na 0.0.0.0:55000** (proces: docker-proxy)\n44. **port 55000/tcp na [::]:55000** (proces: docker-proxy)\n45. **port 59644/tcp na 100.85.231.56:59644** (proces: tailscaled)\n\n#### Analiza Ryzyka\n\n- **Porty publicznie widoczne:** Porty takie jak `25/tcp`, `53/tcp/udp`, i `80/tcp` są publicznie widoczne, co stanowi wysokie ryzyko.\n- **Porty ograniczone do interfejsu tailscale0:** Porty takie jak `22/tcp`, `11434/tcp`, `8080/tcp`, `3001/tcp`, `8188/tcp`, `3010/tcp` są ograniczone do interfejsu tailscale0, co zmniejsza ryzyko.\n- **Porty ograniczone do sieci prywatnej:** Porty takie jak `2847/tcp`, `8501/tcp`, `8081/tcp` są ograniczone do sieci prywatnej (np. 192.168.0.0/24), co zwiększa bezpieczeństwo.\n- **Reguły blokujące:** Reguły takie jak `3001 DENY IN Anywhere`, `22/tcp DENY IN Anywhere` zapobiegają dostępowi do tych portów, eliminując ryzyko.\n\n#### Rekomendacje\n\n1. **Zablokować publiczny dostęp** do portów 25/tcp (SMTP) i 80/tcp, jeśli nie są krytyczne.\n2. **Wzmocnić zabezpieczenia SSH** na porcie 2847/tcp (np. wymusić uwierzytelnianie kluczem).\n3. **Sprawdzić konfigurację firewalla** dla portów używanych przez Dockera (np. 11434/tcp) – czy nie są narażone na ataki z zewnątrz.\n4. **Monitorować ruch na porcie 53/tcp/udp**, aby wykryć próby ataku DDoS lub przejęcia DNS.\n\n### Podsumowanie\n\nReguły firewalla są odpowiednio skonfigurowane i ograniczają ekspozycję portów. Brak reguł o wysokim ryzyku wskazuje na solidną konfigurację zabezpieczeń. Regularne monitorowanie i aktualizacje są kluczowe dla utrzymania bezpieczeństwa systemu.\n\n---\n\n**Prepared by:**  \n[Twoje Imię Nazwisko]  \nData: [Data]\n\n---"
+  },
+  {
+    "name": "scan_ports_localhost",
+    "status": "PASS",
+    "duration": 465.9,
+    "ground_truth_must_contain": [
+      "25",
+      "53",
+      "68",
+      "80",
+      "323",
+      "514",
+      "1514",
+      "1515",
+      "2019",
+      "2847",
+      "5353",
+      "8010",
+      "8080",
+      "8081",
+      "8082",
+      "8083",
+      "8501",
+      "8765",
+      "8766",
+      "9200",
+      "9443",
+      "11434",
+      "41489",
+      "41641",
+      "50980",
+      "55000",
+      "59644"
+    ],
+    "ground_truth_must_not_contain": [
+      "jest dostępny z internetu",
+      "jest otwarty na świat",
+      "KRYTYCZNE ryzyko"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "### Finalny Raport Po Analizie Portów\n\n#### Weryfikowane Narzędzia i Wywołania:\n- **scan_nmap**: Wywołane 1 raz(y).\n\n#### Nasłuchujące Porty (wyciągnięte automatycznie z `ss -tulpn`):\n\n1. port 25/tcp na 127.0.0.1:25 (proces: master)\n2. port 25/tcp na [::1]:25 (proces: master)\n3. port 53/tcp na 127.0.0.54:53 (proces: systemd-resolve)\n4. port 53/tcp na 127.0.0.53%lo:53 (proces: systemd-resolve)\n5. port 53/udp na 127.0.0.54:53 (proces: systemd-resolve)\n6. port 53/udp na 127.0.0.53%lo:53 (proces: systemd-resolve)\n7. port 68/udp na 192.168.0.110%eno1:68 (proces: systemd-network)\n8. port 80/tcp na *:80 (proces: caddy)\n9. port 323/udp na 127.0.0.1:323 (proces: chronyd)\n10. port 323/udp na [::1]:323 (proces: chronyd)\n11. port 514/udp na 0.0.0.0:514 (proces: docker-proxy)\n12. port 514/udp na [::]:514 (proces: docker-proxy)\n13. port 1514/tcp na 0.0.0.0:1514 (proces: docker-proxy)\n14. port 1514/tcp na [::]:1514 (proces: docker-proxy)\n15. port 1515/tcp na 0.0.0.0:1515 (proces: docker-proxy)\n16. port 1515/tcp na [::]:1515 (proces: docker-proxy)\n17. port 2019/tcp na 127.0.0.1:2019 (proces: caddy)\n18. port 2847/tcp na 0.0.0.0:2847 (proces: sshd)\n19. port 2847/tcp na [::]:2847 (proces: sshd)\n20. port 5353/udp na 0.0.0.0:5353 (proces: avahi-daemon)\n21. port 5353/udp na [::]:5353 (proces: avahi-daemon)\n22. port 8010/tcp na 127.0.0.1:8010 (proces: docker-proxy)\n23. port 8080/tcp na 0.0.0.0:8080 (proces: docker-proxy)\n24. port 8080/tcp na [::]:8080 (proces: docker-proxy)\n25. port 8081/tcp na 0.0.0.0:8081 (proces: docker-proxy)\n26. port 8081/tcp na [::]:8081 (proces: docker-proxy)\n27. port 8082/tcp na 127.0.0.1:8082 (proces: docker-proxy)\n28. port 8083/tcp na 0.0.0.0:8083 (proces: docker-proxy)\n29. port 8083/tcp na [::]:8083 (proces: docker-proxy)\n30. port 8501/tcp na 0.0.0.0:8501 (proces: docker-proxy)\n31. port 8501/tcp na [::]:8501 (proces: docker-proxy)\n32. port 8765/tcp na 0.0.0.0:8765 (proces: uvicorn)\n33. port 8766/tcp na 127.0.0.1:8766 (proces: docker-proxy)\n34. port 9200/tcp na 0.0.0.0:9200 (proces: docker-proxy)\n35. port 9200/tcp na [::]:9200 (proces: docker-proxy)\n36. port 9443/tcp na 0.0.0.0:9443 (proces: docker-proxy)\n37. port 9443/tcp na [::]:9443 (proces: docker-proxy)\n38. port 11434/tcp na 127.0.0.1:11434 (proces: docker-proxy)\n39. port 41489/tcp na 127.0.0.1:41489 (proces: containerd)\n40. port 41641/udp na 0.0.0.0:41641 (proces: tailscaled)\n41. port 41641/udp na [::]:41641 (proces: tailscaled)\n42. port 50980/tcp na [fd7a:115c:a1e0::3b37:e739]:50980 (proces: tailscaled)\n43. port 55000/tcp na 0.0.0.0:55000 (proces: docker-proxy)\n44. port 55000/tcp na [::]:55000 (proces: docker-proxy)\n45. port 59644/tcp na 100.85.231.56:59644 (proces: tailscaled)\n\n#### Analiza Ekspozycji Portów:\n\n- **Każdy z powyższych portów** jest oznaczony jako \"nasłuchuje lokalnie - rzeczywista ekspozycja nieznana, wymaga danych z check_firewall (niedostępnych w tym przebiegu)\".\n\n#### Zalecenia:\n- Aby ocenić rzeczywistą ekspozycję portów i potencjalne ryzyko bezpieczeństwa, należy przeprowadzić dodatkowy przebieg z `check_firewall` lub pełny audit systemu.\n- Regularnie monitoruj i aktualizuj ustawienia zapory oraz konfigurację usług, aby zapewnić odpowiedni poziom bezpieczeństwa.\n\n### Rozbieżności wykryte między modelami:\nWszystkie szkice były zgodne ze źródłem danych."
+  },
+  {
+    "name": "stealth_scan_detection",
+    "status": "ERROR",
+    "detail": "Nie udało się pobrać ground_truth (pentest_agent/nmap_stealth_scan): Client error '403 Forbidden' for url 'http://localhost:8766/run_tool'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+  },
+  {
+    "name": "whatweb_dvwa",
+    "status": "PASS",
+    "duration": 333.2,
+    "ground_truth_must_contain": [
+      "Apache",
+      "DVWA"
+    ],
+    "ground_truth_must_not_contain": [
+      "nginx"
+    ],
+    "missing_required_phrases": [],
+    "forbidden_phrases_found": [],
+    "full_report": "Na podstawie surowych danych i analizy trzech różnych szkiców raportów, oto finalny raport po polsku:\n\n### Raport diagnostyczny dla http://192.168.0.110:8081\n\n**Prośba użytkownika:** Sprawdź jakie technologie działają na http://192.168.0.110:8081  \n**Narzędzie użyte:** whatweb_scan (wywołane 5 razy)\n\n---\n\n### Wyniki skanowania\n\n#### Adres: http://192.168.0.110:8081\n- **Status HTTP**: 302 Found\n- **Serwer webowy**: Apache/2.4.25 (Debian)\n- **Technologie wykryte**:\n  - Apache 2.4.25\n  - Cookies: PHPSESSID, security\n  - Country: RESERVED ZZ\n  - HTTPServer: Debian Linux Apache/2.4.25 (Debian)\n  - IP: 192.168.0.110\n  - RedirectLocation: login.php\n\n#### Adres: http://192.168.0.110:8081/login.php\n- **Status HTTP**: 200 OK\n- **Serwer webowy**: Apache/2.4.25 (Debian)\n- **Technologie wykryte**:\n  - Apache 2.4.25\n  - Cookies: PHPSESSID, security\n  - Country: RESERVED ZZ\n  - DVWA (Damn Vulnerable Web Application) wersja 1.10 *Development*\n  - HTTPServer: Debian Linux Apache/2.4.25 (Debian)\n  - IP: 192.168.0.110\n  - PHP\n  - PasswordField: password\n\n---\n\n### Problemy bezpieczeństwa\n\n#### Porty i technologie:\n- **Port 8081**: Nasłuchuje lokalnie na adresie `192.168.0.110` z użyciem serwera Apache/2.4.25 (Debian). Dostępność z zewnątrz wymaga weryfikacji przez check_firewall.\n\n#### Aplikacja webowa:\n- **Damn Vulnerable Web Application (DVWA)**: Wykryta na adresie `http://192.168.0.110:8081/login.php`. Ta aplikacja jest przeznaczona do celów edukacyjnych i testowych, ale jej obecność może oznaczać potencjalne zagrożenia bezpieczeństwa, jeśli nie jest odpowiednio zabezpieczona.\n\n---\n\n### Weryfikacja detekcji (Wazuh/Suricata)\n- Brak informacji o wykryciu ruchu przez system IDS/IPS. Nie ma dostępnych alertów Suricata/Wazuh dla tego skanu.\n\n---\n\n### Podsumowanie\nSkanowanie wykazało, że na adresie `http://192.168.0.110:8081` działa serwer Apache 2.4.25 (Debian) z obsługą PHP i aplikacją DVWA. Port 8081 jest otwarty lokalnie, a dostępność z zewnątrz wymaga dodatkowej weryfikacji poprzez narzędzie `check_firewall`. Aplikacja DVWA może być używana do celów edukacyjnych, ale jej obecność może oznaczać potencjalne zagrożenia bezpieczeństwa.\n\n---\n\n### Rozbieżności wykryte między modelami\n- Brak znanych rozbieżności między modelami. Wszystkie szkice były zgodne ze surowymi danymi.\n\n---\n\n::finding[medium]{concern=\"web_app_present\" title=\"Obecność aplikacji DVWA\"}\nAplikacja Damn Vulnerable Web Application (DVWA) wersja 1.10 jest dostępna na adresie `http://192.168.0.110:8081/login.php`. Ta aplikacja jest przeznaczona do celów edukacyjnych i testowych, ale jej obecność może oznaczać potencjalne zagrożenia bezpieczeństwa.\n::"
+  }
+]

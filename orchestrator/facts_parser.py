@@ -518,10 +518,11 @@ def extract_and_format_nmap_block(raw: str) -> str:
 
         open_ports = []
         for line in stdout.splitlines():
-            match = re.match(r"^(\d+)/(tcp|udp)\s+open\s+(\S+)", line.strip())
+            match = re.match(r"^(\d+)/(tcp|udp)\s+open\s+(\S+)(?:\s+(.+))?$", line.strip())
             if match:
                 port, proto, service = match.group(1), match.group(2), match.group(3)
-                open_ports.append((int(port), proto, service))
+                version = (match.group(4) or "").strip()
+                open_ports.append((int(port), proto, service, version))
 
         command = obj.get("command", "brak danych")
         target = obj.get("params", {}).get("target", "brak danych")
@@ -536,8 +537,9 @@ def extract_and_format_nmap_block(raw: str) -> str:
         ]
         if open_ports:
             lines.append("- PELNA LISTA otwartych portow (WYPISZ KAZDY Z NICH W RAPORCIE jako OSOBNA linia):")
-            for i, (port, proto, service) in enumerate(open_ports, 1):
-                lines.append(f"  {i}. port {port}/{proto} (usluga: {service})")
+            for i, (port, proto, service, version) in enumerate(open_ports, 1):
+                version_str = f", wersja: {version}" if version else ""
+                lines.append(f"  {i}. port {port}/{proto} (usluga: {service}{version_str})")
         else:
             lines.append("- BRAK otwartych portow w top portach przeskanowanych przez nmap.")
         lines.append(
@@ -928,3 +930,434 @@ def extract_and_format_connection_guard(raw: str) -> str:
     )
     lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW - BLAD POLACZENIA")
     return "\n".join(lines)
+
+
+def extract_and_format_sqlmap_block(raw: str) -> str:
+    """Szuka wynikow sqlmap_scan (pentest-agent /run_tool) w raw_results i
+    zwraca gotowy, niepodwazalny blok faktow o SQL injection. Istnieje z
+    tego samego powodu co extract_and_format_nmap_block - surowy output
+    sqlmapa jest dlugi i latwo przeoczyc/zle zinterpretowac kluczowa
+    informacje (czy parametr jest naprawde podatny, jaki DBMS), zwlaszcza
+    dla modeli 8-14B. SQL injection to jedna z najpowazniejszych klas
+    podatnosci, wiec ten blok NIE moze zalezec od tego, czy model dobrze
+    przeczyta surowy tekst."""
+    for obj in _find_json_objects(raw):
+        tool = obj.get("tool", "")
+        stdout = obj.get("stdout", "")
+        if not isinstance(stdout, str):
+            continue
+        if tool != "sqlmap_scan":
+            continue
+
+        command = obj.get("command", "brak danych")
+        target = obj.get("params", {}).get("target", "brak danych")
+
+        vulnerable = "sqlmap identified the following injection point(s)" in stdout
+
+        lines = [
+            f"### ZWERYFIKOWANE FAKTY: WYNIK SQLMAP ({tool}) (NIEPODWAZALNE, wyciagniete automatycznie)",
+            f"- Narzedzie: {tool}",
+            f"- Target: {target}",
+            f"- Komenda: {command}",
+            f"- Status: {'SUKCES' if obj.get('returncode') == 0 else 'BLAD'} (returncode={obj.get('returncode')})",
+        ]
+
+        if not vulnerable:
+            lines.append(
+                "- WERDYKT: sqlmap NIE znalazl podatnosci SQL injection na tym URL "
+                "przy uzytych ustawieniach (--level/--risk). To NIE oznacza ze "
+                "aplikacja jest bezpieczna - wyzszy poziom testow moze wykryc "
+                "wiecej, ale przy TYCH ustawieniach brak trafienia. NIE zglaszaj "
+                "tego jako 'brak podatnosci SQLi' bez tego zastrzezenia."
+            )
+            lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW SQLMAP")
+            return "\n".join(lines)
+
+        lines.append(
+            "- WERDYKT: sqlmap POTWIERDZIL podatnosc SQL injection (nie przypuszczenie - "
+            "faktyczne wstrzykniecie i eksploatacja)."
+        )
+
+        param_names = []
+        for pname, method in re.findall(r"Parameter:\s*(\S+)\s*\((\w+)\)", stdout):
+            label = f"{pname} ({method})"
+            if label not in param_names:
+                param_names.append(label)
+        if param_names:
+            lines.append(f"- Podatny(e) parametr(y): {', '.join(param_names)}")
+
+        techniques = re.findall(
+            r"Type:\s*(.+?)\n\s*Title:\s*(.+?)\n\s*Payload:\s*(.+?)(?:\n|$)",
+            stdout,
+        )
+        if techniques:
+            lines.append("- Wykryte techniki wstrzykniecia (KAZDA to osobny, potwierdzony wektor):")
+            for i, (ttype, title, payload) in enumerate(techniques[:10], 1):
+                lines.append(f"  {i}. {ttype.strip()} - {title.strip()}")
+                lines.append(f"     Payload: {payload.strip()}")
+
+        dbms_match = re.search(r"back-end DBMS:\s*(.+)", stdout)
+        if not dbms_match:
+            dbms_match = re.search(r"the back-end DBMS is '?([^'\n]+)'?", stdout)
+        if dbms_match:
+            lines.append(f"- Wykryty DBMS: {dbms_match.group(1).strip()}")
+
+        os_match = re.search(r"web server operating system:\s*(.+)", stdout)
+        if os_match:
+            lines.append(f"- System operacyjny serwera: {os_match.group(1).strip()}")
+
+        tech_match = re.search(r"web application technology:\s*(.+)", stdout)
+        if tech_match:
+            lines.append(f"- Technologia aplikacji webowej: {tech_match.group(1).strip()}")
+
+        lines.append(
+            "BEZWZGLEDNIE: powyzsza podatnosc SQL injection jest POTWIERDZONYM, "
+            "krytycznym/wysokim ryzykiem - MUSI zostac zgloszona jako Finding "
+            "w raporcie z pelna lista technik i payloadow powyzej, niezaleznie "
+            "od innych wynikow skanowania."
+        )
+        lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW SQLMAP")
+        return "\n".join(lines)
+    return ""
+
+
+GOBUSTER_MAX_MATCHES = 20
+
+
+def extract_and_format_gobuster_block(raw: str) -> str:
+    """Szuka wynikow gobuster_dir (pentest-agent /run_tool) w raw_results i
+    zwraca gotowy, niepodwazalny blok faktow o znalezionych katalogach/plikach.
+
+    W przeciwienstwie do labu testowego (DVWA), na realnej stronie klienta
+    liczba trafien moze byc duza - dlatego blok jest limitowany (patrz
+    GOBUSTER_MAX_MATCHES) i priorytetyzuje trafienia 200/301/302
+    (realnie dostepne zasoby) nad samym potwierdzeniem istnienia sciezki
+    zwracajacej 401/403 (istnieje, ale zablokowane - mniej pilne, ale
+    nadal warte odnotowania jako powierzchnia ataku)."""
+    for obj in _find_json_objects(raw):
+        tool = obj.get("tool", "")
+        stdout = obj.get("stdout", "")
+        if not isinstance(stdout, str):
+            continue
+        if tool != "gobuster_dir":
+            continue
+
+        command = obj.get("command", "brak danych")
+        target = obj.get("params", {}).get("target", "brak danych")
+
+        accessible = []   # (path, status, size)
+        blocked = []      # (path, status, size)
+        for line in stdout.splitlines():
+            m = re.match(
+                r"^(\S+)\s+\(Status:\s*(\d+)\)\s*\[Size:\s*(\d+)\](?:\s*\[--> (.+)\])?",
+                line.strip(),
+            )
+            if not m:
+                continue
+            path, status, size, redirect = m.group(1), m.group(2), m.group(3), m.group(4)
+            entry = (path, status, size, redirect or "")
+            if status in ("401", "403"):
+                blocked.append(entry)
+            else:
+                accessible.append(entry)
+
+        total_found = len(accessible) + len(blocked)
+
+        lines = [
+            f"### ZWERYFIKOWANE FAKTY: WYNIK GOBUSTER ({tool}) (NIEPODWAZALNE, wyciagniete automatycznie)",
+            f"- Narzedzie: {tool}",
+            f"- Target: {target}",
+            f"- Komenda: {command}",
+            f"- Status: {'SUKCES' if obj.get('returncode') == 0 else 'BLAD'} (returncode={obj.get('returncode')})",
+            f"- Lacznie znalezionych sciezek: {total_found}",
+        ]
+
+        if total_found == 0:
+            lines.append(
+                "- WERDYKT: gobuster NIE znalazl zadnych katalogow/plikow z uzytej "
+                "wordlisty przy tych ustawieniach. To NIE oznacza braku ukrytych "
+                "endpointow - moze wynikac z WAF/rate-limitingu blokujacego skan "
+                "albo zbyt malej wordlisty. NIE zglaszaj tego jako 'brak ukrytych "
+                "zasobow' bez tego zastrzezenia."
+            )
+            lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW GOBUSTER")
+            return "\n".join(lines)
+
+        if accessible:
+            lines.append(
+                f"- DOSTEPNE zasoby (status 200/301/302 - realnie osiagalne, WYPISZ KAZDY):"
+            )
+            for i, (path, status, size, redirect) in enumerate(accessible[:GOBUSTER_MAX_MATCHES], 1):
+                redirect_str = f" -> przekierowanie na {redirect}" if redirect else ""
+                lines.append(f"  {i}. {path} (status {status}, {size} bajtow){redirect_str}")
+            if len(accessible) > GOBUSTER_MAX_MATCHES:
+                lines.append(f"  ... i {len(accessible) - GOBUSTER_MAX_MATCHES} wiecej (ucieto dla zwiezlosci)")
+
+        if blocked:
+            lines.append(
+                f"- ISTNIEJACE, ale ZABLOKOWANE zasoby (status 401/403 - istnieja, "
+                f"potencjalna powierzchnia ataku, ale nie bezposrednio dostepne):"
+            )
+            for i, (path, status, size, redirect) in enumerate(blocked[:GOBUSTER_MAX_MATCHES], 1):
+                lines.append(f"  {i}. {path} (status {status}, {size} bajtow)")
+            if len(blocked) > GOBUSTER_MAX_MATCHES:
+                lines.append(f"  ... i {len(blocked) - GOBUSTER_MAX_MATCHES} wiecej (ucieto dla zwiezlosci)")
+
+        lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW GOBUSTER")
+        return "\n".join(lines)
+    return ""
+
+
+def extract_and_format_ffuf_block(raw: str) -> str:
+    """Szuka wynikow ffuf_fuzz (pentest-agent /run_tool) w raw_results i
+    zwraca gotowy, niepodwazalny blok faktow o znalezionych katalogach/
+    plikach. Format ffuf rozni sie od gobustera (nawiasy kwadratowe, kody
+    ANSI do koloryzacji terminala, ktore trzeba wyciac przed parsowaniem),
+    ale logika oceny (dostepne vs zablokowane, limit, ostrzezenie przy
+    braku trafien) jest identyczna jak w extract_and_format_gobuster_block."""
+    for obj in _find_json_objects(raw):
+        tool = obj.get("tool", "")
+        stdout = obj.get("stdout", "")
+        if not isinstance(stdout, str):
+            continue
+        if tool != "ffuf_fuzz":
+            continue
+
+        command = obj.get("command", "brak danych")
+        target = obj.get("params", {}).get("target", "brak danych")
+
+        clean_stdout = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", stdout)
+
+        accessible = []
+        blocked = []
+        for line in clean_stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            m = re.match(
+                r"^(\S*)\s*\[Status:\s*(\d+),\s*Size:\s*(\d+),\s*Words:\s*(\d+),\s*Lines:\s*(\d+),\s*Duration:\s*(\d+)ms\]",
+                line,
+            )
+            if not m:
+                continue
+            path, status, size = m.group(1), m.group(2), m.group(3)
+            path_label = path if path else "(pusta wartosc FUZZ - katalog glowny)"
+            entry = (path_label, status, size)
+            if status == "403":
+                blocked.append(entry)
+            else:
+                accessible.append(entry)
+
+        total_found = len(accessible) + len(blocked)
+
+        lines = [
+            f"### ZWERYFIKOWANE FAKTY: WYNIK FFUF ({tool}) (NIEPODWAZALNE, wyciagniete automatycznie)",
+            f"- Narzedzie: {tool}",
+            f"- Target: {target}",
+            f"- Komenda: {command}",
+            f"- Status: {'SUKCES' if obj.get('returncode') == 0 else 'BLAD'} (returncode={obj.get('returncode')})",
+            f"- Lacznie znalezionych sciezek: {total_found}",
+        ]
+
+        if total_found == 0:
+            lines.append(
+                "- WERDYKT: ffuf NIE znalazl zadnych katalogow/plikow z uzytej "
+                "wordlisty przy tych ustawieniach. To NIE oznacza braku ukrytych "
+                "endpointow - moze wynikac z WAF/rate-limitingu blokujacego skan "
+                "albo zbyt malej wordlisty. NIE zglaszaj tego jako 'brak ukrytych "
+                "zasobow' bez tego zastrzezenia."
+            )
+            lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW FFUF")
+            return "\n".join(lines)
+
+        if accessible:
+            lines.append("- DOSTEPNE zasoby (status 200/301/302 - realnie osiagalne, WYPISZ KAZDY):")
+            for i, (path, status, size) in enumerate(accessible[:GOBUSTER_MAX_MATCHES], 1):
+                lines.append(f"  {i}. {path} (status {status}, {size} bajtow)")
+            if len(accessible) > GOBUSTER_MAX_MATCHES:
+                lines.append(f"  ... i {len(accessible) - GOBUSTER_MAX_MATCHES} wiecej (ucieto dla zwiezlosci)")
+
+        if blocked:
+            lines.append(
+                "- ISTNIEJACE, ale ZABLOKOWANE zasoby (status 403 - istnieja, "
+                "potencjalna powierzchnia ataku, ale nie bezposrednio dostepne):"
+            )
+            for i, (path, status, size) in enumerate(blocked[:GOBUSTER_MAX_MATCHES], 1):
+                lines.append(f"  {i}. {path} (status {status}, {size} bajtow)")
+            if len(blocked) > GOBUSTER_MAX_MATCHES:
+                lines.append(f"  ... i {len(blocked) - GOBUSTER_MAX_MATCHES} wiecej (ucieto dla zwiezlosci)")
+
+        lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW FFUF")
+        return "\n".join(lines)
+    return ""
+
+
+def extract_and_format_enum4linux_block(raw: str) -> str:
+    """Szuka wynikow enum4linux_scan (pentest-agent /run_tool) w raw_results
+    i zwraca gotowy, niepodwazalny blok faktow o enumeracji SMB.
+
+    UWAGA (2026-09): sciezka 'brak sesji/SMB' zweryfikowana na realnym
+    negatywnym wyniku z DVWA. Sciezka pozytywna (znalezione shares/
+    uzytkownicy/polityka hasel) oparta na standardowym formacie
+    enum4linux 0.9.1, ale NIE zweryfikowana na realnym pozytywnym
+    przykladzie w tej sesji - brak w labie celu z otwartym SMB. Jesli
+    format sie nie zgadza przy pierwszym prawdziwym trafieniu, dopasuj
+    regex do faktycznego outputu."""
+    for obj in _find_json_objects(raw):
+        tool = obj.get("tool", "")
+        stdout = obj.get("stdout", "")
+        if not isinstance(stdout, str):
+            continue
+        if tool != "enum4linux_scan":
+            continue
+
+        command = obj.get("command", "brak danych")
+        target = obj.get("params", {}).get("target", "brak danych")
+        clean_stdout = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", stdout)
+
+        lines = [
+            f"### ZWERYFIKOWANE FAKTY: WYNIK ENUM4LINUX ({tool}) (NIEPODWAZALNE, wyciagniete automatycznie)",
+            f"- Narzedzie: {tool}",
+            f"- Target: {target}",
+            f"- Komenda: {command}",
+            f"- Status: {'SUKCES' if obj.get('returncode') == 0 else 'BLAD/BRAK SESJI'} (returncode={obj.get('returncode')})",
+        ]
+
+        null_session_denied = "doesn't allow session using username" in clean_stdout
+        no_workgroup = "Can't find workgroup/domain" in clean_stdout
+
+        if null_session_denied and no_workgroup:
+            lines.append(
+                "- WERDYKT: cel NIE przyjmuje sesji SMB (null session) - serwer "
+                "odrzucil polaczenie z pustym uzytkownikiem/haslem. To POZYTYWNA "
+                "informacja bezpieczenstwa (null session jest wylaczona), nie "
+                "brak wyniku. Mozliwe rowniez ze port SMB (139/445) jest "
+                "zamkniety/nieosiagalny - w obu przypadkach dalsza enumeracja "
+                "SMB nie powiodla sie."
+            )
+            lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW ENUM4LINUX")
+            return "\n".join(lines)
+
+        shares = re.findall(r"Sharename\s+Type\s+Comment\s*\n\s*-+\s+-+\s+-+\s*\n((?:.+\n)+?)\n", clean_stdout)
+        share_lines = []
+        if shares:
+            for share_block in shares:
+                for sline in share_block.strip().splitlines():
+                    sline = sline.strip()
+                    if sline:
+                        share_lines.append(sline)
+        if share_lines:
+            lines.append("- ZNALEZIONE UDZIALY SIECIOWE (SMB shares, WYPISZ KAZDY):")
+            for i, s in enumerate(share_lines[:GOBUSTER_MAX_MATCHES], 1):
+                lines.append(f"  {i}. {s}")
+
+        users = re.findall(r"user:\[([^\]]+)\]", clean_stdout)
+        if users:
+            unique_users = list(dict.fromkeys(users))
+            lines.append(f"- ZNALEZIENI UZYTKOWNICY (enumeracja RID, WYPISZ KAZDEGO): {', '.join(unique_users[:GOBUSTER_MAX_MATCHES])}")
+
+        min_pw_len = re.search(r"Minimum password length:\s*(\S+)", clean_stdout)
+        lockout = re.search(r"Account lockout threshold:\s*(\S+)", clean_stdout)
+        if min_pw_len or lockout:
+            lines.append("- POLITYKA HASEL:")
+            if min_pw_len:
+                lines.append(f"  - Minimalna dlugosc hasla: {min_pw_len.group(1)}")
+            if lockout:
+                lines.append(f"  - Prog blokady konta: {lockout.group(1)}")
+
+        domain_sid = re.search(r"Domain Sid:\s*(\S+)", clean_stdout)
+        if domain_sid:
+            lines.append(f"- Domain SID: {domain_sid.group(1)}")
+
+        if not share_lines and not users and not (min_pw_len or lockout) and not domain_sid:
+            lines.append(
+                "- WERDYKT: enum4linux zakonczyl dzialanie, ale parser nie rozpoznal "
+                "zadnej znanej sekcji z wynikami (shares/users/password policy). "
+                "MOZLIWE ze sesja zostala nawiazana, ale nic nie wyekstrahowano - "
+                "sprawdz pelny surowy wynik recznie, NIE zaklada automatycznie "
+                "braku podatnosci."
+            )
+
+        lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW ENUM4LINUX")
+        return "\n".join(lines)
+    return ""
+
+
+def extract_and_format_nikto_block(raw: str) -> str:
+    """Szuka wynikow nikto_scan (pentest-agent /run_tool) w raw_results
+    i zwraca gotowy blok faktow o wynikach skanu web.
+
+    UWAGA (2026-09): oparty na standardowym formacie nikto 2.x z wiedzy
+    ogolnej, NIE zweryfikowany na realnym przykladzie w tej sesji.
+    Wymaga testu end-to-end zanim uznamy go za rownie pewny jak
+    sqlmap/gobuster/ffuf/enum4linux."""
+    for obj in _find_json_objects(raw):
+        tool = obj.get("tool", "")
+        stdout = obj.get("stdout", "")
+        if not isinstance(stdout, str):
+            continue
+        if tool != "nikto_scan":
+            continue
+
+        command = obj.get("command", "brak danych")
+        target = obj.get("params", {}).get("target", "brak danych")
+        clean_stdout = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", stdout)
+
+        lines = [
+            f"### ZWERYFIKOWANE FAKTY: WYNIK NIKTO ({tool}) (NIEPODWAZALNE, wyciagniete automatycznie)",
+            f"- Narzedzie: {tool}",
+            f"- Target: {target}",
+            f"- Komenda: {command}",
+            f"- Status: {'SUKCES' if obj.get('returncode') == 0 else 'BLAD'} (returncode={obj.get('returncode')})",
+        ]
+
+        server_match = re.search(r"^\+ Server:\s*(.+)$", clean_stdout, re.MULTILINE)
+        if server_match:
+            lines.append(f"- Naglowek Server: {server_match.group(1).strip()}")
+
+        skip_prefixes = (
+            "+ Target IP:", "+ Target Hostname:", "+ Target Port:",
+            "+ Start Time:", "+ End Time:", "+ Server:",
+            "+ Multiple IPs found", "+ Platform:",
+            "+ No CGI Directories found",
+        )
+        finding_lines = []
+        for line in clean_stdout.splitlines():
+            line = line.strip()
+            if not line.startswith("+ "):
+                continue
+            if line.startswith(skip_prefixes):
+                continue
+            if re.match(r"^\+\s*\d+\s+requests?:", line):
+                continue
+            if re.match(r"^\+\s*\d+\s+host\(s\)\s+tested", line):
+                continue
+            finding_lines.append(line[2:].strip())
+
+        summary_match = re.search(
+            r"(\d+)\s+requests?:\s*(\d+)\s+errors?\s+and\s+(\d+)\s+items?\s+reported",
+            clean_stdout,
+        )
+
+        if finding_lines:
+            lines.append(f"- ZNALEZIONE PROBLEMY ({len(finding_lines)}, WYPISZ KAZDY):")
+            for i, f in enumerate(finding_lines[:GOBUSTER_MAX_MATCHES], 1):
+                lines.append(f"  {i}. {f}")
+        else:
+            lines.append(
+                "- WERDYKT: nikto nie zwrocil zadnych linii findingow (+) poza "
+                "metadanymi. Sprawdz returncode i surowy output recznie - moze "
+                "to oznaczac brak podatnosci, ale rowniez blad polaczenia z "
+                "targetem."
+            )
+
+        if summary_match:
+            req, err, items = summary_match.groups()
+            lines.append(
+                f"- Podsumowanie nikto: {req} zapytan, {err} blad(ow), {items} "
+                f"zgloszonych elementow"
+            )
+
+        lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW NIKTO")
+        return "\n".join(lines)
+    return ""
