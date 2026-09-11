@@ -61,12 +61,12 @@ def make_tools():
         return json.dumps(_call_admin_agent("check_recent_alerts"), ensure_ascii=False)
 
     @tool
-    def scan_nmap(target: str = "127.0.0.1") -> str:
+    def check_local_ports(target: str = "127.0.0.1") -> str:
         """Sprawdza otwarte porty i nasluchujace uslugi NA TYM SERWERZE (localhost) za pomoca
-        polecenia `ss` (socket statistics) - NIE jest to skan nmap zdalnego celu, tylko lista
-        portow nasluchujacych lokalnie wraz z procesem, ktory je otwiera. Parametr target jest
-        IGNOROWANY przez admin-agent (endpoint zawsze zwraca dane dla samego hosta) - zachowany
-        w sygnaturze tylko dla kompatybilnosci z dotychczasowym interfejsem narzedzia."""
+        polecenia `ss` (socket statistics). Parametr target jest IGNOROWANY przez admin-agent
+        (endpoint zawsze zwraca dane dla samego hosta) - zachowany w sygnaturze tylko dla
+        kompatybilnosci wstecznej. (Nazwa narzedzia do 2026-09 brzmiala 'scan_nmap', co bylo
+        mylace - sugerowala skan zdalnego celu, podczas gdy to zawsze lokalny `ss`.)"""
         return json.dumps(_call_admin_agent("scan_ports"), ensure_ascii=False)
 
     @tool
@@ -108,7 +108,7 @@ def make_tools():
         check_fail2ban,
         check_ssh,
         check_recent_alerts,
-        scan_nmap,
+        check_local_ports,
         check_updates,
         check_docker,
         list_services,

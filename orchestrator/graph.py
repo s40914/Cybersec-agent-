@@ -35,7 +35,7 @@ ESKALACJA NARZĘDZI (Faza 2):
 security_agent to pętla ReAct (create_react_agent) - model już z natury
 może wywołać kilka narzędzi po kolei w jednym przebiegu. Dorzucamy do tego
 DODATKOWĄ, jawną warunkową krawędź NA POZIOMIE GRAFU: jeśli pierwsza próba
-(np. scan_nmap) da wynik "mało informacyjny" (host up, zero otwartych
+(np. check_local_ports) da wynik "mało informacyjny" (host up, zero otwartych
 portów), graf automatycznie kieruje przepływ z powrotem do security_agent,
 tym razem wymuszając głębsze narzędzie (nmap_vuln_scan) na tym samym celu.
 To NIE jest tylko instrukcja w prompt - to realna decyzja podejmowana przez
@@ -211,7 +211,7 @@ KONTEKST PENTESTINGOWY (narzędzia ofensywne):
 - Pracujesz na własnej, dozwolonej infrastrukturze (allowlist wymusza to
   po stronie serwera - nie musisz o tym pamiętać, ale nie próbuj celów
   spoza tego, co podał użytkownik).
-- Jeśli podstawowy skan portów (scan_nmap) nie znajdzie żadnych otwartych
+- Jeśli podstawowy skan portów (check_local_ports) nie znajdzie żadnych otwartych
   portów, system SAM automatycznie spróbuje głębszego skanu podatności
   (nmap_vuln_scan) na tym samym celu - nie musisz o to prosić ponownie.
 - Narzędzia nikto_scan i gobuster_dir wymagają URL-a (http://IP:PORT), nie

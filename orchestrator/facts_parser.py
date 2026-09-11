@@ -1287,9 +1287,11 @@ def extract_and_format_nikto_block(raw: str) -> str:
     """Szuka wynikow nikto_scan (pentest-agent /run_tool) w raw_results
     i zwraca gotowy blok faktow o wynikach skanu web.
 
-    UWAGA (2026-09): oparty na standardowym formacie nikto 2.x z wiedzy
-    ogolnej, NIE zweryfikowany na realnym przykladzie w tej sesji.
-    Wymaga testu end-to-end zanim uznamy go za rownie pewny jak
+    Oparty na standardowym formacie nikto 2.x. Zweryfikowany end-to-end
+    na realnym skanie DVWA (nikto v2.6.1, 13 findingow) w sesji 2026-09-08 -
+    dwie poprawki regexow wprowadzone po tym tescie (dopasowanie linii
+    podsumowania bez nawiasow, filtrowanie linii metadanych Platform:/
+    CGI Directories jako falszywych findingow). Rownie pewny jak
     sqlmap/gobuster/ffuf/enum4linux."""
     for obj in _find_json_objects(raw):
         tool = obj.get("tool", "")
