@@ -153,6 +153,25 @@ def validate_network(network: str) -> tuple[bool, str]:
     return True, "prywatny zakres CIDR"
 
 
+import re as _re
+
+_CIDR_SUFFIX_RE = _re.compile(r"/\d{1,3}$")
+
+
+def _looks_like_cidr(value: str) -> bool:
+    """
+    Odroznia zapis CIDR (np. 192.168.0.0/24) od URL-a zawierajacego
+    ukosnik w sciezce (np. http://IP/page?id=1). Samo sprawdzanie
+    "/" in target bylo bledne - kazdy URL z parametrem zapytania ma
+    ukosnik w sciezce i byl bledczasnie kierowany do walidatora CIDR,
+    co odrzucalo poprawne, dozwolone URL-e (np. dla sqlmap_scan)
+    komunikatem "Nieprawidlowa siec CIDR".
+    """
+    if value.startswith(("http://", "https://")):
+        return False
+    return bool(_CIDR_SUFFIX_RE.search(value))
+
+
 def target_scope(target: str) -> dict:
     """
     Zwraca jawny opis decyzji scope.
@@ -160,7 +179,7 @@ def target_scope(target: str) -> dict:
 
     target = target.strip()
 
-    if "/" in target:
+    if _looks_like_cidr(target):
         allowed, reason = validate_network(target)
     else:
         allowed, reason = validate_target(target)

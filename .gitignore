@@ -20,3 +20,4 @@ data/malware_hashes/
 data/sast_artifacts/
 orchestrator/re_artifacts/
 orchestrator/sast_artifacts/
+data/*.db

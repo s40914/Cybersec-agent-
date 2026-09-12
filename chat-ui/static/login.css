@@ -1,0 +1,54 @@
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.login-overlay.hidden {
+  display: none;
+}
+
+.login-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 8px 0;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: rgba(0, 255, 150, 0.5);
+}
+
+.login-error {
+  color: #ff6b6b;
+  font-size: 13px;
+  margin: 6px 0;
+}
+
+.login-error.hidden {
+  display: none;
+}
+
+.login-switch {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-top: 10px;
+}
+
+#register-form.hidden,
+#login-form.hidden {
+  display: none;
+}

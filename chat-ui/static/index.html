@@ -9,10 +9,46 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="login.css?v=1">
 </head>
 <body>
 
-<div class="splash-overlay" id="splash-overlay">
+<div class="login-overlay" id="login-overlay">
+  <div class="splash-card">
+    <div class="splash-logo">
+      <div class="splash-logo-mark">&gt;_</div>
+      <div class="splash-logo-text">
+        <div class="splash-title">Cybersec Agent</div>
+        <div class="splash-subtitle">Logowanie wymagane</div>
+      </div>
+    </div>
+
+    <div class="splash-body">
+      <p>Dostep do tego narzedzia wymaga zalogowania. Kazde uzycie narzedzi
+      jest zapisywane wraz z tozsamoscia osoby zalogowanej (log audytowy).</p>
+    </div>
+
+    <div id="login-form">
+      <input type="email" id="login-email" class="login-input" placeholder="e-mail" autocomplete="username">
+      <input type="password" id="login-password" class="login-input" placeholder="haslo" autocomplete="current-password">
+      <div id="login-error" class="login-error hidden"></div>
+      <button type="button" class="splash-enter-btn" id="login-submit-btn">Zaloguj sie</button>
+      <button type="button" class="btn-link login-switch" id="show-register-btn">Nie masz konta? Zaloz je</button>
+    </div>
+
+    <div id="register-form" class="hidden">
+      <input type="text" id="register-first-name" class="login-input" placeholder="imie" autocomplete="given-name">
+      <input type="text" id="register-last-name" class="login-input" placeholder="nazwisko" autocomplete="family-name">
+      <input type="email" id="register-email" class="login-input" placeholder="e-mail" autocomplete="username">
+      <input type="password" id="register-password" class="login-input" placeholder="haslo (min. 8 znakow)" autocomplete="new-password">
+      <div id="register-error" class="login-error hidden"></div>
+      <button type="button" class="splash-enter-btn" id="register-submit-btn">Zaloz konto</button>
+      <button type="button" class="btn-link login-switch" id="show-login-btn">Masz juz konto? Zaloguj sie</button>
+    </div>
+  </div>
+</div>
+
+<div class="splash-overlay hidden" id="splash-overlay">
   <div class="splash-card">
     <div class="splash-logo">
       <div class="splash-logo-mark">&gt;_</div>
@@ -97,6 +133,10 @@
       <div id="findings-list" class="findings-list">
         <div class="findings-loading">ładowanie…</div>
       </div>
+    </div>
+
+    <div class="side-section" id="admin-panel-trigger-section" style="display:none;">
+      <button type="button" id="admin-panel-btn" class="btn-ghost" style="width:100%; text-align:left;">📋 Panel administratora (log audytowy)</button>
     </div>
 
     <div class="side-section side-section-grow">
@@ -201,6 +241,21 @@
   };
 })();
 </script>
+<script src="login.js?v=1"></script>
+<script src="admin_panel.js?v=1"></script>
 <script src="app.js?v=1786222638"></script>
+<div id="admin-panel-overlay" class="login-overlay hidden">
+  <div class="splash-card" style="max-width: 900px; max-height: 80vh; overflow-y: auto;">
+    <div class="splash-logo">
+      <div class="splash-logo-mark">&gt;_</div>
+      <div class="splash-logo-text">
+        <div class="splash-title">Log audytowy</div>
+        <div class="splash-subtitle">Kto, kiedy, jakiego narzedzia uzyl</div>
+      </div>
+    </div>
+    <div id="admin-panel-content">ladowanie...</div>
+    <button type="button" class="btn-link login-switch" id="admin-panel-close">Zamknij</button>
+  </div>
+</div>
 </body>
 </html>

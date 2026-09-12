@@ -20,6 +20,7 @@ from sast_pipeline import SASTPipeline, is_source_code
 from internal_sensor import InternalSensor
 from target_scope import target_scope
 import update_malware_db
+import auth_db
 
 PENTEST_AGENT_URL = os.getenv("PENTEST_AGENT_URL", "http://pentest-agent:8766")
 PENTEST_AGENT_TOKEN = os.getenv("PENTEST_AGENT_TOKEN", "")
@@ -35,8 +36,96 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+auth_db.init_db()
+
 graph_app = build_app()
 evidence_store = EvidenceStore()
+
+
+class RegisterRequest(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/register")
+async def register(req: RegisterRequest):
+    """Zaklada nowe konto uzytkownika. Wymagane przed pierwszym logowaniem -
+    zgodnie z zasada 'kazde uzycie narzedzia musi byc powiazane z
+    konkretna, zidentyfikowana osoba'."""
+    if len(req.password) < 8:
+        raise HTTPException(status_code=400, detail="Haslo musi miec co najmniej 8 znakow.")
+    try:
+        user = auth_db.create_user(req.first_name, req.last_name, req.email, req.password)
+    except Exception as exc:
+        if "UNIQUE constraint failed" in str(exc):
+            raise HTTPException(status_code=409, detail="Konto z tym adresem e-mail juz istnieje.")
+        logger.exception("REGISTER_ERROR: %s", exc)
+        raise HTTPException(status_code=500, detail="Blad podczas zakladania konta.")
+    logger.info(f"USER_REGISTERED: email={req.email}")
+    return {"status": "ok", "user_id": user["id"]}
+
+
+@app.post("/login")
+async def login(req: LoginRequest):
+    """Sprawdza haslo, tworzy sesje. Zwraca token do zapisania w przegladarce."""
+    user = auth_db.verify_login(req.email, req.password)
+    if user is None:
+        logger.warning(f"LOGIN_FAILED: email={req.email}")
+        raise HTTPException(status_code=401, detail="Nieprawidlowy e-mail lub haslo.")
+    token = auth_db.create_session(user["id"])
+    logger.info(f"LOGIN_OK: email={req.email}, user_id={user['id']}")
+    return {
+        "status": "ok",
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "first_name": user["first_name"],
+            "last_name": user["last_name"],
+            "email": user["email"],
+            "is_admin": bool(user["is_admin"]),
+        },
+    }
+
+
+@app.get("/verify_session")
+async def verify_session(token: str):
+    """Sprawdza czy token sesji jest wciaz wazny. Uzywane przez chat-ui
+    do decydowania czy pokazac ekran logowania czy aplikacje."""
+    user = auth_db.get_user_by_session(token)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Sesja nieprawidlowa lub wygasla.")
+    return {
+        "status": "ok",
+        "user": {
+            "id": user["id"],
+            "first_name": user["first_name"],
+            "last_name": user["last_name"],
+            "email": user["email"],
+            "is_admin": bool(user["is_admin"]),
+        },
+    }
+
+
+@app.get("/audit_log")
+async def get_audit_log(session_token: str, limit: int = 100, user_email: str | None = None):
+    """Zwraca log audytowy - kto, kiedy, jakie narzedzie, na jaki cel.
+    Dostepny WYLACZNIE dla uzytkownikow z rola administratora - zwykly
+    uzytkownik nie powinien widziec historii dzialan innych osob."""
+    requester = auth_db.get_user_by_session(session_token)
+    if requester is None:
+        raise HTTPException(status_code=401, detail="Wymagane logowanie.")
+    if not requester.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Brak uprawnien - wymagana rola administratora.")
+    logs = auth_db.get_audit_log(limit=limit, user_email=user_email)
+    return {"status": "ok", "count": len(logs), "logs": logs}
+
 artifact_pipeline = ArtifactPipeline(evidence_store)
 re_pipeline = REPipeline(evidence_store)
 sast_pipeline = SASTPipeline(evidence_store)
@@ -57,6 +146,7 @@ class ChatRequest(BaseModel):
     # zapisywane ani logowane w orchestratorze - plynie bezposrednio do
     # pentest-agenta i tam jest weryfikowane wzgledem PENTEST_ADMIN_PASSWORD_HASH.
     admin_password: str | None = None
+    session_token: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -427,6 +517,7 @@ def _run_pipeline_background(
     selected_tools,
     tool_params,
     admin_password: str | None = None,
+    user_email: str | None = None,
 ):
     try:
         allowed, reason = _validate_selected_tool_targets(
@@ -454,6 +545,7 @@ def _run_pipeline_background(
                 "selected_tools": selected_tools,
                 "tool_params": tool_params,
                 "admin_password": admin_password,
+                "user_email": user_email,
             },
             config={"configurable": {"thread_id": thread_id}},
         )
@@ -468,8 +560,15 @@ def _run_pipeline_background(
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
+    # Wymagamy wazna sesje przed uruchomieniem pipeline'u. Kazde uzycie
+    # narzedzia musi byc powiazane z konkretna, zidentyfikowana osoba -
+    # patrz auth_db.py.
+    user = auth_db.get_user_by_session(req.session_token) if req.session_token else None
+    if user is None:
+        raise HTTPException(status_code=401, detail="Wymagane logowanie - sesja nieprawidlowa lub wygasla.")
+
     thread_id = req.thread_id or str(uuid.uuid4())
-    logger.info(f"Otrzymano wiadomość (thread_id={thread_id}): {req.message}")
+    logger.info(f"Otrzymano wiadomość (thread_id={thread_id}, user={user['email']}): {req.message}")
     status_store.set_status(thread_id, "starting", "Uruchamiam pipeline...")
     asyncio.create_task(
         asyncio.to_thread(
@@ -479,6 +578,7 @@ async def chat(req: ChatRequest):
             req.selected_tools,
             req.tool_params,
             req.admin_password,
+            user["email"],
         )
     )
     return {"thread_id": thread_id, "status": "started"}

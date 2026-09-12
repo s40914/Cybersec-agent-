@@ -672,6 +672,7 @@
           selected_tools: selectedTools.size > 0 ? Array.from(selectedTools) : null,
           tool_params: selectedTools.size > 0 ? toolParams : null,
           admin_password: window.getAdminPasswordForRequest ? window.getAdminPasswordForRequest() : null,
+          session_token: window.getSessionToken ? window.getSessionToken() : null,
         }),
       });
       const data = await res.json();

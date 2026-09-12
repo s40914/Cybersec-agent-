@@ -525,6 +525,7 @@ Zawsze odpowiadaj wyłącznie po polsku. Nie wywołujesz żadnych narzędzi.
 class AuditState(TypedDict):
     thread_id: str
     admin_password: Optional[str]
+    user_email: Optional[str]
     user_request: str
     selected_tools: Optional[List[str]]
     tool_params: Optional[dict]
@@ -534,6 +535,9 @@ class AuditState(TypedDict):
     docker_facts_snapshot: str
     services_facts_snapshot: str
     lynis_facts_snapshot: str
+    nuclei_facts_snapshot: str
+    searchsploit_facts_snapshot: str
+    testssl_facts_snapshot: str
     draft_reports: List[dict]
     final_report: str
     escalation_count: Optional[int]
@@ -774,6 +778,7 @@ def build_app():
         pentest_tools_list = make_pentest_tools(
             state["thread_id"],
             admin_password=state.get("admin_password"),
+            user_email=state.get("user_email"),
         )
         logger.info(
             "SECURITY_NODE_AFTER_PENTEST_TOOLS: thread_id=%s pentest_tools=%s",
@@ -1366,6 +1371,9 @@ def build_app():
             "docker_facts_snapshot": docker_block or state.get("docker_facts_snapshot") or "",
             "services_facts_snapshot": services_block or state.get("services_facts_snapshot") or "",
             "lynis_facts_snapshot": lynis_block or state.get("lynis_facts_snapshot") or "",
+            "nuclei_facts_snapshot": nuclei_block or state.get("nuclei_facts_snapshot") or "",
+            "searchsploit_facts_snapshot": searchsploit_block or state.get("searchsploit_facts_snapshot") or "",
+            "testssl_facts_snapshot": testssl_block or state.get("testssl_facts_snapshot") or "",
         }
 
     def escalate_prep_node(state: AuditState):
@@ -1522,6 +1530,7 @@ def build_app():
             ("DOCKER", "extract_and_format_docker_block"),
             ("SERVICES", "extract_and_format_services_block"),
             ("LYNIS", "extract_and_format_lynis_block"),
+            ("NUCLEI", "extract_and_format_nuclei_block"),
         ]
 
         module_globals = globals()
@@ -1548,6 +1557,9 @@ def build_app():
                 "DOCKER": "docker_facts_snapshot",
                 "SERVICES": "services_facts_snapshot",
                 "LYNIS": "lynis_facts_snapshot",
+                "NUCLEI": "nuclei_facts_snapshot",
+                "SEARCHSPLOIT": "searchsploit_facts_snapshot",
+                "TESTSSL": "testssl_facts_snapshot",
             }
             if not block and name in SNAPSHOT_KEYS:
                 snapshot = state.get(SNAPSHOT_KEYS[name])
@@ -1836,6 +1848,96 @@ Napisz wyłącznie finalny raport po polsku.
                         "LYNIS_COMPLETENESS_GUARD: OK (%d/%d pozycji w raporcie)",
                         actual_total, expected_total,
                     )
+
+        # NUCLEI_COMPLETENESS_GUARD
+        try:
+            nuclei_block_for_check = extract_and_format_nuclei_block(raw_results)
+        except Exception as exc:
+            logger.exception("NUCLEI_COMPLETENESS_GUARD: blad parsera: %s", exc)
+            nuclei_block_for_check = None
+        if not nuclei_block_for_check:
+            nuclei_block_for_check = state.get("nuclei_facts_snapshot") or None
+            if nuclei_block_for_check:
+                logger.info("NUCLEI_COMPLETENESS_GUARD: raw juz skompaktowany, uzywam snapshotu")
+        if nuclei_block_for_check:
+            m = re.search(r"Liczba znalezisk:\s*(\d+)", nuclei_block_for_check)
+            if m:
+                expected = int(m.group(1))
+                actual = len(re.findall(r"\[(CRITICAL|HIGH|MEDIUM|LOW|INFO)\]", final_report))
+                if actual < expected:
+                    logger.warning(
+                        "NUCLEI_COMPLETENESS_GUARD: raport zawiera %d/%d znalezisk - doklejam pelna liste",
+                        actual, expected,
+                    )
+                    final_report += (
+                        "\n\n---\n\n"
+                        "## Pelny wynik skanu Nuclei (dane automatyczne, zweryfikowane)\n\n"
+                        f"Uwaga: powyzsza sekcja raportu wymienila {actual} z {expected} znalezisk. "
+                        "Ponizszy blok jest wstawiony automatycznie przez kod deterministyczny:\n\n"
+                        + nuclei_block_for_check
+                    )
+                else:
+                    logger.info("NUCLEI_COMPLETENESS_GUARD: OK (%d/%d)", actual, expected)
+
+        # SEARCHSPLOIT_COMPLETENESS_GUARD
+        try:
+            searchsploit_block_for_check = extract_and_format_searchsploit_block(raw_results)
+        except Exception as exc:
+            logger.exception("SEARCHSPLOIT_COMPLETENESS_GUARD: blad parsera: %s", exc)
+            searchsploit_block_for_check = None
+        if not searchsploit_block_for_check:
+            searchsploit_block_for_check = state.get("searchsploit_facts_snapshot") or None
+            if searchsploit_block_for_check:
+                logger.info("SEARCHSPLOIT_COMPLETENESS_GUARD: raw juz skompaktowany, uzywam snapshotu")
+        if searchsploit_block_for_check:
+            m = re.search(r"Liczba znalezionych exploitow:\s*(\d+)", searchsploit_block_for_check)
+            if m:
+                expected = int(m.group(1))
+                actual = len(re.findall(r"\[EDB-ID ", final_report))
+                if actual < expected:
+                    logger.warning(
+                        "SEARCHSPLOIT_COMPLETENESS_GUARD: raport zawiera %d/%d exploitow - doklejam pelna liste",
+                        actual, expected,
+                    )
+                    final_report += (
+                        "\n\n---\n\n"
+                        "## Pelna lista exploitow Searchsploit (dane automatyczne, zweryfikowane)\n\n"
+                        f"Uwaga: powyzsza sekcja raportu wymienila {actual} z {expected} exploitow. "
+                        "Ponizszy blok jest wstawiony automatycznie przez kod deterministyczny:\n\n"
+                        + searchsploit_block_for_check
+                    )
+                else:
+                    logger.info("SEARCHSPLOIT_COMPLETENESS_GUARD: OK (%d/%d)", actual, expected)
+
+        # TESTSSL_COMPLETENESS_GUARD
+        try:
+            testssl_block_for_check = extract_and_format_testssl_block(raw_results)
+        except Exception as exc:
+            logger.exception("TESTSSL_COMPLETENESS_GUARD: blad parsera: %s", exc)
+            testssl_block_for_check = None
+        if not testssl_block_for_check:
+            testssl_block_for_check = state.get("testssl_facts_snapshot") or None
+            if testssl_block_for_check:
+                logger.info("TESTSSL_COMPLETENESS_GUARD: raw juz skompaktowany, uzywam snapshotu")
+        if testssl_block_for_check:
+            m = re.search(r"pozycji WYMAGAJACYCH UWAGI[^:]*:\s*(\d+)", testssl_block_for_check)
+            if m:
+                expected = int(m.group(1))
+                actual = len(re.findall(r"^\s*-\s*\[[A-Z_]+\]", final_report, re.MULTILINE))
+                if actual < expected:
+                    logger.warning(
+                        "TESTSSL_COMPLETENESS_GUARD: raport zawiera %d/%d pozycji - doklejam pelna liste",
+                        actual, expected,
+                    )
+                    final_report += (
+                        "\n\n---\n\n"
+                        "## Pelny wynik audytu TLS/SSL - testssl (dane automatyczne, zweryfikowane)\n\n"
+                        f"Uwaga: powyzsza sekcja raportu wymienila {actual} z {expected} pozycji. "
+                        "Ponizszy blok jest wstawiony automatycznie przez kod deterministyczny:\n\n"
+                        + testssl_block_for_check
+                    )
+                else:
+                    logger.info("TESTSSL_COMPLETENESS_GUARD: OK (%d/%d)", actual, expected)
 
         meta = response.response_metadata
         logger.info(

@@ -6,7 +6,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY tools.py graph.py app.py status_store.py firewall_parser.py pentest_tools.py tool_status_parser.py section_checklist.py facts_parser.py security_models.py evidence_store.py evidence_pipeline.py artifact_pipeline.py re_pipeline.py sast_pipeline.py finding_builder.py finding_rules.py finding_lifecycle.py target_scope.py internal_sensor.py update_malware_db.py ./
+COPY tools.py graph.py app.py status_store.py firewall_parser.py pentest_tools.py tool_status_parser.py section_checklist.py facts_parser.py security_models.py evidence_store.py evidence_pipeline.py artifact_pipeline.py re_pipeline.py sast_pipeline.py finding_builder.py finding_rules.py finding_lifecycle.py target_scope.py internal_sensor.py update_malware_db.py auth_db.py ./
 COPY data/yara_rules/ data/yara_rules/
 COPY data/semgrep_rules/ data/semgrep_rules/
 # Pobranie oficjalnych rulesetow Semgrep RAZ, podczas budowy obrazu -

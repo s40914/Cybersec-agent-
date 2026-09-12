@@ -56,6 +56,39 @@ async def api_stop(thread_id: str):
         return JSONResponse(content=resp.json(), status_code=resp.status_code)
 
 
+@app.post("/api/register")
+async def api_register(request: Request):
+    body = await request.json()
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.post(f"{ORCHESTRATOR_URL}/register", json=body)
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
+@app.post("/api/login")
+async def api_login(request: Request):
+    body = await request.json()
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.post(f"{ORCHESTRATOR_URL}/login", json=body)
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
+@app.get("/api/verify_session")
+async def api_verify_session(token: str):
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.get(f"{ORCHESTRATOR_URL}/verify_session", params={"token": token})
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
+@app.get("/api/audit_log")
+async def api_audit_log(session_token: str, limit: int = 100):
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.get(
+            f"{ORCHESTRATOR_URL}/audit_log",
+            params={"session_token": session_token, "limit": limit},
+        )
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
 @app.post("/api/chat")
 async def api_chat(request: Request):
     body = await request.json()
