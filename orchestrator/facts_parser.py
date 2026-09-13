@@ -1363,3 +1363,132 @@ def extract_and_format_nikto_block(raw: str) -> str:
         lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW NIKTO")
         return "\n".join(lines)
     return ""
+
+
+def extract_and_format_whatweb_block(raw: str) -> str:
+    """Szuka wynikow whatweb_scan w raw_results i zwraca gotowy,
+    niepodwazalny blok faktow o wykrytych technologiach/wtyczkach.
+
+    Format whatweb: jedna linia na kazdy przetestowany URL (whatweb
+    podaza za przekierowaniami), z kolorowanymi kodami ANSI, kodem
+    statusu HTTP w nawiasach kwadratowych, i lista wtyczek oddzielonych
+    przecinkiem w formacie Plugin[wartosc] lub samo Plugin bez wartosci."""
+    for obj in _find_json_objects(raw):
+        tool = obj.get("tool", "")
+        stdout = obj.get("stdout", "")
+        if not isinstance(stdout, str):
+            continue
+        if tool != "whatweb_scan":
+            continue
+
+        command = obj.get("command", "brak danych")
+        target = obj.get("params", {}).get("target", "brak danych")
+        clean_stdout = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", stdout)
+
+        lines = [
+            f"### ZWERYFIKOWANE FAKTY: WYNIK WHATWEB ({tool}) (NIEPODWAZALNE, wyciagniete automatycznie)",
+            f"- Narzedzie: {tool}",
+            f"- Target: {target}",
+            f"- Komenda: {command}",
+            f"- Status: {'SUKCES' if obj.get('returncode') == 0 else 'BLAD'} (returncode={obj.get('returncode')})",
+        ]
+
+        url_matches = re.findall(
+            r"^(https?://\S+)\s+\[(\d+)[^\]]*\]\s+(.+)$",
+            clean_stdout,
+            re.MULTILINE,
+        )
+
+        if not url_matches:
+            lines.append(
+                "- WERDYKT: whatweb nie zwrocil zadnych rozpoznanych URL-i/technologii "
+                "(mozliwe ze cel jest nieosiagalny albo nie odpowiada na HTTP)."
+            )
+            lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW WHATWEB")
+            return "\n".join(lines)
+
+        lines.append(f"- Liczba przetestowanych URL-i (wliczajac przekierowania): {len(url_matches)}")
+        lines.append("- WYKRYTE TECHNOLOGIE/WTYCZKI (WYPISZ KAZDY URL Z JEGO PELNA LISTA):")
+
+        for i, (url, status, plugins_raw) in enumerate(url_matches, 1):
+            plugins = [p.strip() for p in plugins_raw.split(",") if p.strip()]
+            plugins_str = ", ".join(plugins) if plugins else "brak wykrytych wtyczek"
+            lines.append(f"  {i}. {url} [HTTP {status}]: {plugins_str}")
+
+        lines.append(
+            f"UZYWAJ WYLACZNIE powyzszej listy {len(url_matches)} URL-i i ich wtyczek. "
+            f"NIE zmyslaj innych technologii/wersji ktorych nie ma na tej liscie."
+        )
+        lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW WHATWEB")
+        return "\n".join(lines)
+    return ""
+
+
+def extract_and_format_wafw00f_block(raw: str) -> str:
+    """Szuka wynikow wafw00f_scan w raw_results i zwraca gotowy,
+    niepodwazalny blok faktow o wykrytym (lub nie) WAF-ie.
+
+    Format: stdout to gotowy JSON (wafw00f -f json), lista obiektow
+    z polami detected/firewall/manufacturer/trigger_url/url - prostszy
+    niz wiekszosc innych narzedzi, nie wymaga regexow tekstowych."""
+    for obj in _find_json_objects(raw):
+        tool = obj.get("tool", "")
+        stdout = obj.get("stdout", "")
+        if not isinstance(stdout, str):
+            continue
+        if tool != "wafw00f_scan":
+            continue
+
+        command = obj.get("command", "brak danych")
+        target = obj.get("params", {}).get("target", "brak danych")
+
+        lines = [
+            f"### ZWERYFIKOWANE FAKTY: WYNIK WAFW00F ({tool}) (NIEPODWAZALNE, wyciagniete automatycznie)",
+            f"- Narzedzie: {tool}",
+            f"- Target: {target}",
+            f"- Komenda: {command}",
+            f"- Status: {'SUKCES' if obj.get('returncode') == 0 else 'BLAD'} (returncode={obj.get('returncode')})",
+        ]
+
+        try:
+            results = json.loads(stdout)
+        except (json.JSONDecodeError, ValueError):
+            lines.append(
+                "- BLAD: nie udalo sie sparsowac wyniku wafw00f jako JSON. "
+                "NIE zmyslaj wykrytego WAF-u - zglos to jako brak wyniku."
+            )
+            lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW WAFW00F")
+            return "\n".join(lines)
+
+        if not isinstance(results, list) or not results:
+            lines.append(
+                "- WERDYKT: wafw00f nie zwrocil zadnych wynikow dla tego celu."
+            )
+            lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW WAFW00F")
+            return "\n".join(lines)
+
+        any_detected = any(r.get("detected") for r in results)
+        lines.append(f"- Liczba sprawdzonych URL-i: {len(results)}")
+
+        if any_detected:
+            lines.append("- WERDYKT: WYKRYTO zapore aplikacji webowej (WAF). Szczegoly:")
+            for r in results:
+                if r.get("detected"):
+                    fw = r.get("firewall", "nieznany")
+                    manu = r.get("manufacturer", "nieznany")
+                    lines.append(f"  - {r.get('url', target)}: {fw} (producent: {manu})")
+            lines.append(
+                "UWAGA: obecnosc WAF-a moze wplywac na wyniki innych skanerow "
+                "(np. blokowac/maskowac prawdziwe podatnosci) - uwzglednij to "
+                "w interpretacji pozostalych wynikow."
+            )
+        else:
+            lines.append(
+                "- WERDYKT: NIE wykryto zapory aplikacji webowej (WAF) na tym celu "
+                "przy uzytych ustawieniach. To NIE jest dowod ze WAF na pewno nie istnieje "
+                "- niektore WAF-y sa trudne do wykrycia."
+            )
+
+        lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW WAFW00F")
+        return "\n".join(lines)
+    return ""
