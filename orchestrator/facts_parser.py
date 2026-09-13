@@ -647,19 +647,41 @@ def extract_and_format_lynis_block(raw: str) -> str:
     return ""
 
 
+_NUCLEI_LINE_RE = re.compile(
+    r"^\[([\w.:-]+)\]\s*\[(\w+)\]\s*\[(\w+)\]\s*(\S+)(?:\s*(\[.*\]))?\s*$"
+)
+
+
 def extract_and_format_nuclei_block(raw: str) -> str:
     """Parsuje wynik nuclei_scan (linie tekstowe w formacie
     [template] [protokol] [severity] url [szczegoly]) - wyciaga
     ustrukturyzowana liste znalezisk zamiast pozwalac modelowi
-    przepisywac surowy tekst."""
+    przepisywac surowy tekst.
+
+    WAZNE (naprawiono 2026-09-13, test na Metasploitable2): parsowanie
+    dziala LINIA PO LINII (nie jeden regex na caly stdout). Poprzednia
+    wersja uzywala re.findall na calym tekscie z \s* przed opcjonalnym
+    nawiasem szczegolow - znak backslash-s dopasowuje rowniez znak nowej linii, wiec
+    gdy jakas linia nie miala wlasnego nawiasu szczegolow (typowe dla
+    znaleziskach protokolu tcp/javascript bez dodatkowych danych),
+    regex "przeciekal" i chwytal poczatek NASTEPNEJ linii jako szczegoly
+    biezacego wpisu - a ta nastepna linia znikala calkowicie z listy.
+    Na realnym skanie Metasploitable2 (29 znaleziska) to obcinalo wynik
+    do 19 pozycji, gubiac m.in. ftp-anonymous-login i kilka wpisow
+    pgsql-default-db. Parsowanie linia-po-linii fizycznie eliminuje
+    mozliwosc przeciekania miedzy wpisami."""
     for obj in _find_json_objects(raw):
         if obj.get("tool") != "nuclei_scan":
             continue
         stdout = obj.get("stdout") or ""
-        findings = re.findall(
-            r"\[([\w.-]+)\]\s*\[(\w+)\]\s*\[(\w+)\]\s*(\S+)(?:\s*\[(.*)\])?",
-            stdout,
-        )
+        findings = []
+        for line in stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            m = _NUCLEI_LINE_RE.match(line)
+            if m:
+                findings.append(m.groups())
         lines = [
             "### ZWERYFIKOWANE FAKTY: SKAN NUCLEI (wyciagniete automatycznie, NIEPODWAZALNE)",
             f"- Liczba znalezisk: {len(findings)}",
