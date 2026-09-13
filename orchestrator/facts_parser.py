@@ -1196,13 +1196,12 @@ def extract_and_format_enum4linux_block(raw: str) -> str:
     """Szuka wynikow enum4linux_scan (pentest-agent /run_tool) w raw_results
     i zwraca gotowy, niepodwazalny blok faktow o enumeracji SMB.
 
-    UWAGA (2026-09): sciezka 'brak sesji/SMB' zweryfikowana na realnym
-    negatywnym wyniku z DVWA. Sciezka pozytywna (znalezione shares/
-    uzytkownicy/polityka hasel) oparta na standardowym formacie
-    enum4linux 0.9.1, ale NIE zweryfikowana na realnym pozytywnym
-    przykladzie w tej sesji - brak w labie celu z otwartym SMB. Jesli
-    format sie nie zgadza przy pierwszym prawdziwym trafieniu, dopasuj
-    regex do faktycznego outputu."""
+    Zweryfikowano end-to-end na obu sciezkach: negatywnej (DVWA, brak
+    sesji SMB) oraz pozytywnej (Metasploitable2, realna enumeracja 35
+    uzytkownikow i 5 udzialow sieciowych, sesja 2026-09-13). Trzy bledy
+    znalezione i naprawione przy pierwszym pozytywnym tescie: falszywy
+    wpis udzialu z komunikatu informacyjnego, limit 20 pozycji obcinajacy
+    liste uzytkownikow, zly wzorzec regex dla Domain SID."""
     for obj in _find_json_objects(raw):
         tool = obj.get("tool", "")
         stdout = obj.get("stdout", "")
@@ -1238,14 +1237,23 @@ def extract_and_format_enum4linux_block(raw: str) -> str:
             lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW ENUM4LINUX")
             return "\n".join(lines)
 
-        shares = re.findall(r"Sharename\s+Type\s+Comment\s*\n\s*-+\s+-+\s+-+\s*\n((?:.+\n)+?)\n", clean_stdout)
+        share_section_match = re.search(
+            r"Sharename\s+Type\s+Comment\s*\n\s*-+\s+-+\s+-+\s*\n(.*?)(?:\n\s*\n|\nReconnecting|\n[A-Z][a-z]+ing with)",
+            clean_stdout,
+            re.DOTALL,
+        )
         share_lines = []
-        if shares:
-            for share_block in shares:
-                for sline in share_block.strip().splitlines():
-                    sline = sline.strip()
-                    if sline:
-                        share_lines.append(sline)
+        if share_section_match:
+            # Kazda prawdziwa linia udzialu zaczyna sie (po wcieciu) od nazwy
+            # bez spacji, potem typu Disk/IPC/Printers - odrzucamy linie
+            # ktore nie pasuja do tego wzorca (np. komunikaty informacyjne
+            # ktore czasem trafiaja sie tuz po tabeli bez pustej linii miedzy).
+            for sline in share_section_match.group(1).splitlines():
+                sline = sline.strip()
+                if not sline:
+                    continue
+                if re.match(r"^\S+\s+(Disk|IPC|Printer)\b", sline):
+                    share_lines.append(sline)
         if share_lines:
             lines.append("- ZNALEZIONE UDZIALY SIECIOWE (SMB shares, WYPISZ KAZDY):")
             for i, s in enumerate(share_lines[:GOBUSTER_MAX_MATCHES], 1):
@@ -1254,7 +1262,8 @@ def extract_and_format_enum4linux_block(raw: str) -> str:
         users = re.findall(r"user:\[([^\]]+)\]", clean_stdout)
         if users:
             unique_users = list(dict.fromkeys(users))
-            lines.append(f"- ZNALEZIENI UZYTKOWNICY (enumeracja RID, WYPISZ KAZDEGO): {', '.join(unique_users[:GOBUSTER_MAX_MATCHES])}")
+            lines.append(f"- Liczba znalezionych unikalnych uzytkownikow: {len(unique_users)}")
+            lines.append(f"- ZNALEZIENI UZYTKOWNICY (enumeracja RID, WYPISZ WSZYSTKICH {len(unique_users)}): {', '.join(unique_users)}")
 
         min_pw_len = re.search(r"Minimum password length:\s*(\S+)", clean_stdout)
         lockout = re.search(r"Account lockout threshold:\s*(\S+)", clean_stdout)
@@ -1265,7 +1274,9 @@ def extract_and_format_enum4linux_block(raw: str) -> str:
             if lockout:
                 lines.append(f"  - Prog blokady konta: {lockout.group(1)}")
 
-        domain_sid = re.search(r"Domain Sid:\s*(\S+)", clean_stdout)
+        domain_sid = re.search(r"Found new SID:\s*\n(S-\d[-\d]+)", clean_stdout)
+        if not domain_sid:
+            domain_sid = re.search(r"Domain Sid:\s*(\S+)", clean_stdout)
         if domain_sid:
             lines.append(f"- Domain SID: {domain_sid.group(1)}")
 
