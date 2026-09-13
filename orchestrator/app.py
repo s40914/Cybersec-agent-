@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from graph import build_app, get_model_config
 from tools import make_tools
-from pentest_tools import make_pentest_tools
+from pentest_tools import make_pentest_tools, _fetch_registry
 import status_store
 from evidence_store import EvidenceStore
 from artifact_pipeline import ArtifactPipeline
@@ -368,9 +368,29 @@ def _tool_schema(tool):
         "required": [],
     }
 
+# Typy parametrow, ktorych NIE da sie bezpiecznie wypelnic automatycznie
+# z jednego, wspolnego "Celu" podanego w prompcie - wymagaja jawnego
+# wskazania przez czlowieka (konkretny parametr zapytania dla sqlmap,
+# literalny FUZZ dla ffuf, fraza wyszukiwania dla searchsploit).
+_MANUAL_TARGET_TYPES = {"url_with_query", "url_fuzz", "search_term"}
+
+
+def _tool_requires_manual_target(tool_name: str, registry: dict) -> bool:
+    params = registry.get(tool_name, {}).get("params", {})
+    for spec in params.values():
+        if spec.get("type") in _MANUAL_TARGET_TYPES:
+            return True
+    return False
+
+
 @app.get("/tools")
 async def list_tools():
     """Lista narzędzi wraz ze schematami parametrów dla UI."""
+    try:
+        registry = _fetch_registry()
+    except Exception:
+        registry = {}
+
     defensive = []
 
     for t in make_tools():
@@ -379,6 +399,7 @@ async def list_tools():
             "description": t.description,
             "category": "cybersec",
             "args_schema": _tool_schema(t),
+            "requires_manual_target": False,
         })
 
     offensive = []
@@ -389,6 +410,7 @@ async def list_tools():
             "description": t.description,
             "category": "pentesting",
             "args_schema": _tool_schema(t),
+            "requires_manual_target": _tool_requires_manual_target(t.name, registry),
         })
 
     return {"tools": defensive + offensive}
@@ -472,6 +494,39 @@ def _extract_suggested_tools(final_report: str) -> list[dict]:
     return list(seen_tools.values())
 
 
+def _normalize_target_for_tool(raw_target: str, param_type: str) -> str:
+    """
+    Przeksztalca JEDEN, wspolny cel podany przez uzytkownika (np. goly IP
+    albo pelny URL) do formatu wymaganego przez konkretne narzedzie.
+
+    Powstalo, bo administrator nie powinien musiec pamietac ktore
+    narzedzie chce goly IP, ktore pelny URL ze schematem, a ktore URL
+    z parametrem zapytania - to prowadzilo do pomylek (np. port wpisany
+    w pole cookie innego narzedzia, patrz incydent z 2026-09-12).
+
+    NIE dotyczy typow url_with_query / url_fuzz - te wymagaja jawnego,
+    konkretnego wskazania parametru/FUZZ przez czlowieka, nie da sie
+    tego bezpiecznie zgadnac z samego adresu.
+    """
+    raw_target = raw_target.strip()
+
+    if param_type == "ip":
+        # Wytnij schemat i sciezke, jesli ktos podal pelny URL.
+        if "://" in raw_target:
+            without_scheme = raw_target.split("://", 1)[1]
+            return without_scheme.split("/", 1)[0].split(":", 1)[0]
+        return raw_target.split("/", 1)[0].split(":", 1)[0]
+
+    if param_type == "url":
+        if "://" in raw_target:
+            return raw_target
+        return f"http://{raw_target}"
+
+    # url_with_query, url_fuzz, search_term i inne - bez zmian,
+    # wymagaja jawnego wskazania przez uzytkownika.
+    return raw_target
+
+
 def _validate_selected_tool_targets(
     selected_tools,
     tool_params,
@@ -484,12 +539,22 @@ def _validate_selected_tool_targets(
 
     Brak targetu nie jest tutaj blokowany — część narzędzi może
     korzystać z parametrów innych niż target.
+
+    PRZY OKAZJI: normalizuje tool_params NA MIEJSCU (mutuje dict),
+    zeby jeden, wspolny "Cel" podany przez uzytkownika zostal
+    przeksztalcony do formatu wymaganego przez kazde narzedzie -
+    patrz _normalize_target_for_tool.
     """
 
     if not selected_tools:
         return True, "brak jawnie wybranych narzędzi"
 
-    tool_params = tool_params or {}
+    tool_params = tool_params if tool_params is not None else {}
+
+    try:
+        registry = _fetch_registry()
+    except Exception:
+        registry = {}
 
     for tool_name in selected_tools:
         params = tool_params.get(tool_name) or {}
@@ -498,6 +563,18 @@ def _validate_selected_tool_targets(
 
         if not target:
             continue
+
+        param_type = (
+            registry.get(tool_name, {})
+            .get("params", {})
+            .get("target", {})
+            .get("type", "ip")
+        )
+        normalized = _normalize_target_for_tool(target, param_type)
+        if normalized != target:
+            params["target"] = normalized
+            tool_params[tool_name] = params
+            target = normalized
 
         decision = target_scope(str(target))
 

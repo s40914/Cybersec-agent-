@@ -203,6 +203,22 @@
       return;
     }
 
+    // Narzedzia ktore NIE wymagaja recznego wskazania celu (wiekszosc)
+    // dostaja krotka informacje zamiast pelnego formularza - cel jest
+    // wyciagany automatycznie z tresci wiadomosci (patrz sendMessage +
+    // ensureToolParamsForTarget). Zapobiega to myleniu pol miedzy
+    // narzedziami (patrz incydent z 2026-09-12).
+    if (!tool.requires_manual_target) {
+      container.classList.remove("hidden");
+      container.innerHTML = `
+        <div class="tool-params-auto-hint">
+          ✓ Cel zostanie pobrany automatycznie z Twojej wiadomości
+          (np. "sprawdź 172.19.0.50 przez ${escapeHtml(toolName)}")
+        </div>
+      `;
+      return;
+    }
+
     container.classList.remove("hidden");
 
     const fields = Object.entries(properties).map(([name, spec]) => {
@@ -595,6 +611,10 @@
   }
 
   const IPV4_RE = /\b(?:\d{1,3}\.){3}\d{1,3}\b/;
+  // Lapie pelny URL (ze schematem, opcjonalnie z portem/sciezka/parametrem)
+  // - priorytetowy wybor, jesli administrator wpisal cos wiecej niz goly IP
+  // (np. adres z konkretnym parametrem do testu SQL injection).
+  const URL_RE = /https?:\/\/[^\s]+/i;
   let lastTargetGuess = null;
 
   function renderSuggestions(bubble, tools) {
@@ -644,8 +664,24 @@
 
   async function sendMessage(text) {
     if (isBusy || !text.trim()) return;
+    const urlMatch = text.match(URL_RE);
     const ipMatch = text.match(IPV4_RE);
-    if (ipMatch) lastTargetGuess = ipMatch[0];
+    if (urlMatch) {
+      lastTargetGuess = urlMatch[0];
+    } else if (ipMatch) {
+      lastTargetGuess = ipMatch[0];
+    }
+
+    // Automatyczne wypelnienie parametru celu dla WSZYSTKICH zaznaczonych
+    // narzedzi na podstawie adresu/URL wykrytego w tresci wiadomosci -
+    // administrator wpisuje cel RAZ, w prompcie, zamiast oddzielnie w
+    // formularzu kazdego narzedzia (zrodlo bledow z 2026-09-12, np. port
+    // przypadkowo trafiajacy do pola cookie innego narzedzia).
+    if (lastTargetGuess && selectedTools.size > 0) {
+      selectedTools.forEach((toolName) => {
+        ensureToolParamsForTarget(toolName, lastTargetGuess);
+      });
+    }
     isBusy = true;
     composerSend.disabled = true;
 
