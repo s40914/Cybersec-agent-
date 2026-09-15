@@ -660,7 +660,7 @@ def extract_and_format_nuclei_block(raw: str) -> str:
 
     WAZNE (naprawiono 2026-09-13, test na Metasploitable2): parsowanie
     dziala LINIA PO LINII (nie jeden regex na caly stdout). Poprzednia
-    wersja uzywala re.findall na calym tekscie z \s* przed opcjonalnym
+    wersja uzywala re.findall na calym tekscie ze znakiem backslash-s-gwiazdka przed opcjonalnym
     nawiasem szczegolow - znak backslash-s dopasowuje rowniez znak nowej linii, wiec
     gdy jakas linia nie miala wlasnego nawiasu szczegolow (typowe dla
     znaleziskach protokolu tcp/javascript bez dodatkowych danych),
@@ -786,12 +786,15 @@ def extract_and_format_hydra_block(raw: str) -> str:
     faktycznie znalezionej pary to falszywy negatyw (ukrycie realnej
     podatnosci) - oba sa niedopuszczalne w raporcie SecOps."""
     for obj in _find_json_objects(raw):
-        if obj.get("tool") != "hydra_ssh":
+        if obj.get("tool") not in ("hydra_ssh", "hydra_ftp"):
             continue
         stdout = obj.get("stdout", "")
         if not isinstance(stdout, str):
             continue
 
+        tool_name = obj.get("tool")
+        protocol_label = "FTP" if tool_name == "hydra_ftp" else "SSH"
+        header_tag = f"WYNIK {tool_name.upper()}"
         target = obj.get("params", {}).get("target", "brak danych")
         port = obj.get("params", {}).get("port", "22")
         command = obj.get("command", "brak danych")
@@ -812,7 +815,7 @@ def extract_and_format_hydra_block(raw: str) -> str:
 
         if connection_failed:
             lines = [
-                "### ZWERYFIKOWANE FAKTY: WYNIK HYDRA_SSH (NIEPODWAZALNE, wyciagniete automatycznie)",
+                f"### ZWERYFIKOWANE FAKTY: {header_tag} (NIEPODWAZALNE, wyciagniete automatycznie)",
                 f"- Target: {target}:{port}",
                 f"- Komenda: {command}",
                 f"- Status wykonania wg pentest-agenta: {status} (returncode={returncode})",
@@ -826,12 +829,12 @@ def extract_and_format_hydra_block(raw: str) -> str:
                 "wprost: \"Test hydra_ssh NIE POWIODL SIE - serwer SSH byl nieosiagalny "
                 "(timeout/brak polaczenia), zero prob logowania zostalo wykonanych. Wymagana "
                 "weryfikacja dostepnosci uslugi SSH i ponowienie testu.\"",
-                "### KONIEC ZWERYFIKOWANYCH FAKTOW HYDRA_SSH",
+                f"### KONIEC ZWERYFIKOWANYCH FAKTOW {tool_name.upper()}",
             ]
             return "\n".join(lines)
 
         lines = [
-            "### ZWERYFIKOWANE FAKTY: WYNIK HYDRA_SSH (NIEPODWAZALNE, wyciagniete automatycznie)",
+            f"### ZWERYFIKOWANE FAKTY: {header_tag} (NIEPODWAZALNE, wyciagniete automatycznie)",
             f"- Target: {target}:{port}",
             f"- Komenda: {command}",
             f"- Status wykonania: {status} (returncode={returncode})",
@@ -857,7 +860,7 @@ def extract_and_format_hydra_block(raw: str) -> str:
                 "podatnosci na uzytej liscie (co NIE oznacza, ze haslo jest silne - "
                 "oznacza tylko, ze nie pasuje do przetestowanych kombinacji)."
             )
-        lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW HYDRA_SSH")
+        lines.append(f"### KONIEC ZWERYFIKOWANYCH FAKTOW {tool_name.upper()}")
         return "\n".join(lines)
     return ""
 
