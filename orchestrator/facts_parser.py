@@ -130,8 +130,9 @@ def extract_and_format_users_block(raw: str) -> str:
                 lines.append("- Brak uzytkownikow na liscie (human_users jest puste).")
 
             lines.append(f"- Czlonkowie grupy sudo (sudo_group_members): {', '.join(sudo_members) if sudo_members else 'brak'}")
+            usernames_str = ", ".join(u.get("username", "?") for u in human_users) if human_users else "brak"
             lines.append(
-                f"UZYWAJ WYLACZNIE powyzszej listy {[u.get('username') for u in human_users]} jako listy uzytkownikow w raporcie. "
+                f"UZYWAJ WYLACZNIE powyzszej listy uzytkownikow ({usernames_str}) w raporcie. "
                 f"NIE dodawaj uzytkownikow ktorych nie ma na tej liscie (np. 'root', 'ubuntu' jesli nie sa wymienieni powyzej)."
             )
             return "\n".join(lines)
