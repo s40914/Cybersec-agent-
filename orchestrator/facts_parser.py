@@ -1529,3 +1529,117 @@ def extract_and_format_wafw00f_block(raw: str) -> str:
         lines.append("### KONIEC ZWERYFIKOWANYCH FAKTOW WAFW00F")
         return "\n".join(lines)
     return ""
+
+
+def extract_and_format_nmap_vuln_block(raw: str) -> str:
+    """Parsuje wynik nmap_vuln_scan (--script vuln) - wyciaga liste
+    potwierdzonych podatnosci (VULNERABLE) z nazwy skryptu NSE, tytulu,
+    stanu i identyfikatorow CVE/BID jesli sa dostepne.
+
+    Format nmap NSE dla znaleziska podatnosci:
+      | nazwa-skryptu:
+      |   VULNERABLE:
+      |   Tytul podatnosci
+      |     State: VULNERABLE (lub VULNERABLE (Exploitable) / LIKELY VULNERABLE)
+      |     IDs:  BID:xxx  CVE:CVE-xxxx-xxxx   [opcjonalne]
+
+    WAZNE: skrypty NSE zwracaja tez linie w stylu 'NOT VULNERABLE' dla
+    testow ktore nie wykryly problemu (np. smtp-vuln-cve2010-4344) -
+    parser musi je jawnie pomijac, nie tylko szukac slowa VULNERABLE
+    gdziekolwiek w tekscie (bezposrednia przyczyna bledu w nuclei_scan
+    z 2026-09-13 - regex bez odpowiedniego kontekstu linii).
+
+    Osobno: blok 'vulners:' (agregacja CVE z bazy Vulners per uslyga,
+    czesto setki identyfikatorow) jest tylko ZLICZANY, nie wypisywany
+    w calosci - zbyt duzy do czytelnego raportu (patrz test na
+    Metasploitable2: 915 wzmianek CVE w jednym skanie)."""
+    for obj in _find_json_objects(raw):
+        if obj.get("tool") != "nmap_vuln_scan":
+            continue
+        stdout = obj.get("stdout") or ""
+        target = obj.get("params", {}).get("target", "brak danych")
+        command = obj.get("command", "brak danych")
+
+        lines_raw = stdout.splitlines()
+        findings = []
+        vulners_cve_count = 0
+
+        i = 0
+        while i < len(lines_raw):
+            line = lines_raw[i].rstrip()
+            stripped = line.lstrip("|").strip()
+
+            # Naglowek skryptu NSE: "| nazwa-skryptu:" (moze miec spacje po dwukropku)
+            if line.startswith("| ") and stripped.endswith(":"):
+                script_name = stripped.rstrip(":").strip()
+
+                if script_name == "vulners":
+                    vulners_cve_count += stdout[
+                        stdout.find(lines_raw[i]) : stdout.find(lines_raw[i]) + 2000
+                    ].count("CVE-")
+
+                # Sprawdz czy nastepna niepusta linia to "VULNERABLE:"
+                if i + 1 < len(lines_raw) and lines_raw[i + 1].strip().rstrip(":") == "|   VULNERABLE".rstrip(":"):
+                    pass
+
+                if i + 1 < len(lines_raw) and "VULNERABLE:" in lines_raw[i + 1] and "NOT VULNERABLE" not in lines_raw[i + 1]:
+                    title = lines_raw[i + 2].lstrip("|").strip() if i + 2 < len(lines_raw) else ""
+                    state = ""
+                    cve_ids = ""
+                    for j in range(i + 3, min(i + 8, len(lines_raw))):
+                        probe = lines_raw[j].lstrip("|").strip()
+                        if probe.startswith("State:"):
+                            state = probe.replace("State:", "").strip()
+                        elif probe.startswith("IDs:"):
+                            cve_ids = probe.replace("IDs:", "").strip()
+                            break
+                        elif probe == "" or probe.startswith("Disclosure"):
+                            break
+                    # Znajdz najblizszy port/usluge WSTECZ od tego miejsca
+                    # (nmap grupuje wyniki skryptow NSE pod naglowkiem portu,
+                    # np. "25/tcp   open  smtp   Postfix smtpd").
+                    port_context = "nieznany port"
+                    for j in range(i, max(0, i - 500), -1):
+                        probe_line = lines_raw[j]
+                        if "/tcp" in probe_line and "open" in probe_line:
+                            port_context = probe_line.strip()
+                            break
+                    findings.append((script_name, title, state, cve_ids, port_context))
+                elif "NOT VULNERABLE" in (lines_raw[i + 1] if i + 1 < len(lines_raw) else ""):
+                    pass
+            i += 1
+
+        lines = [
+            "### ZWERYFIKOWANE FAKTY: NMAP VULN SCAN (wyciagniete automatycznie, NIEPODWAZALNE)",
+            f"- Target: {target}",
+            f"- Komenda: {command}",
+            f"- Status: {'SUKCES' if obj.get('returncode') == 0 else 'BLAD'} (returncode={obj.get('returncode')})",
+            f"- Liczba POTWIERDZONYCH podatnosci (VULNERABLE): {len(findings)}",
+        ]
+
+        if findings:
+            lines.append("- LISTA POTWIERDZONYCH PODATNOSCI (WYPISZ KAZDA):")
+            for i, (script, title, state, cve_ids, port_ctx) in enumerate(findings, 1):
+                cve_part = f" [{cve_ids}]" if cve_ids else ""
+                lines.append(f"  {i}. {script}: {title} - {state}{cve_part} (port: {port_ctx})")
+        else:
+            lines.append("- Brak potwierdzonych podatnosci (VULNERABLE) w tym skanie.")
+
+        if vulners_cve_count > 0:
+            lines.append(
+                f"- Dodatkowo: baza Vulners zglosila laczne odniesienia do CVE dla "
+                f"wykrytych wersji oprogramowania (orientacyjna, zagregowana liczba "
+                f"wzmianek w calym wyniku: {stdout.count('CVE-')}) - PEŁNA lista NIE jest "
+                f"tu wypisana (zbyt duza, setki pozycji), wspomnij to jako ogolna "
+                f"obserwacje 'wykryto oprogramowanie z duza liczba znanych CVE w bazach "
+                f"podatnosci', NIE wypisuj pojedynczych identyfikatorow ktorych nie ma "
+                f"na liscie powyzej."
+            )
+
+        lines.append(
+            f"UZYWAJ WYLACZNIE powyzszej listy {len(findings)} potwierdzonych podatnosci "
+            f"jako 'VULNERABLE' w raporcie. NIE zmyslaj innych CVE/podatnosci ktorych "
+            f"nie ma na tej liscie. NIE myl 'VULNERABLE' z 'NOT VULNERABLE' (to przeciwny wynik)."
+        )
+        return "\n".join(lines)
+    return ""

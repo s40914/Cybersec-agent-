@@ -78,6 +78,7 @@ from facts_parser import (
     extract_and_format_nuclei_block,
     extract_and_format_whatweb_block,
     extract_and_format_wafw00f_block,
+    extract_and_format_nmap_vuln_block,
     extract_and_format_searchsploit_block,
     extract_and_format_testssl_block,
     compact_raw_results,
@@ -1330,6 +1331,10 @@ def build_app():
         if wafw00f_block:
             new_raw_part = new_raw_part + "\n\n" + wafw00f_block
             logger.info(f"FACTS_WAFW00F: wstrzyknięto blok deterministyczny ({len(wafw00f_block)} znaków)")
+        nmap_vuln_block = extract_and_format_nmap_vuln_block(new_raw_part)
+        if nmap_vuln_block:
+            new_raw_part = new_raw_part + "\n\n" + nmap_vuln_block
+            logger.info(f"FACTS_NMAP_VULN: wstrzyknięto blok deterministyczny ({len(nmap_vuln_block)} znaków)")
 
         exposure_guard_block = extract_and_format_port_exposure_guard(new_raw_part)
         if exposure_guard_block:
@@ -1543,6 +1548,7 @@ def build_app():
             ("NUCLEI", "extract_and_format_nuclei_block"),
             ("WHATWEB", "extract_and_format_whatweb_block"),
             ("WAFW00F", "extract_and_format_wafw00f_block"),
+            ("NMAP_VULN", "extract_and_format_nmap_vuln_block"),
         ]
 
         module_globals = globals()
