@@ -1281,8 +1281,8 @@ def extract_and_format_enum4linux_block(raw: str) -> str:
                 if re.match(r"^\S+\s+(Disk|IPC|Printer)\b", sline):
                     share_lines.append(sline)
         if share_lines:
-            lines.append("- ZNALEZIONE UDZIALY SIECIOWE (SMB shares, WYPISZ KAZDY):")
-            for i, s in enumerate(share_lines[:GOBUSTER_MAX_MATCHES], 1):
+            lines.append(f"- ZNALEZIONE UDZIALY SIECIOWE (SMB shares, {len(share_lines)}, WYPISZ KAZDY):")
+            for i, s in enumerate(share_lines, 1):
                 lines.append(f"  {i}. {s}")
 
         users = re.findall(r"user:\[([^\]]+)\]", clean_stdout)
@@ -1380,7 +1380,7 @@ def extract_and_format_nikto_block(raw: str) -> str:
 
         if finding_lines:
             lines.append(f"- ZNALEZIONE PROBLEMY ({len(finding_lines)}, WYPISZ KAZDY):")
-            for i, f in enumerate(finding_lines[:GOBUSTER_MAX_MATCHES], 1):
+            for i, f in enumerate(finding_lines, 1):
                 lines.append(f"  {i}. {f}")
         else:
             lines.append(
