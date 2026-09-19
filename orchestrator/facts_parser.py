@@ -1643,3 +1643,84 @@ def extract_and_format_nmap_vuln_block(raw: str) -> str:
         )
         return "\n".join(lines)
     return ""
+
+
+# Baza krytycznych, nazwanych CVE dla popularnych produktow - lista
+# recznie utrzymywana, na start: Langflow (CVE-2026-33017, odkryte
+# podczas testow na HackTheBox "Fireflow", 2026-09-19). Cel:
+# DETERMINISTYCZNE wykrycie ze zeskanowany produkt/wersja jest podatny
+# na znane, krytyczne CVE, i wygenerowanie rekomendacji naprawy -
+# NIGDY proba wykorzystania luki. Dopasowanie tekstowe + porownanie
+# numeryczne wersji, identyczny duch co searchsploit_scan (informuje
+# o istnieniu exploita, nie uruchamia go).
+KNOWN_CRITICAL_CVES = [
+    {
+        "product": "Langflow",
+        "match_regex": r"[Ll]angflow[^\d]{0,20}(\d+\.\d+(?:\.\d+)?)",
+        "vulnerable_below": (1, 9, 0),
+        "cve_id": "CVE-2026-33017",
+        "cvss": "9.8 CRITICAL",
+        "description": (
+            "Nieuwierzytelnione zdalne wykonanie kodu (RCE) przez endpoint "
+            "POST /api/v1/build_public_tmp/{flow_id}/flow - akceptuje pole "
+            "'data' z requestu, co pozwala wstrzyknac wlasny 'custom "
+            "component' z kodem Python wykonywanym bez sandboxingu."
+        ),
+        "remediation": (
+            "Zaktualizuj do Langflow >= 1.9.0 (UWAGA: wersja 1.8.2 byla "
+            "blednie raportowana jako spatchowana - potwierdzono ze nadal "
+            "podatna, jedyna pewna naprawa to 1.9.0+). Do czasu aktualizacji: "
+            "ogranicz dostep sieciowy do instancji, usun niepotrzebne "
+            "publiczne flow ('Public flows')."
+        ),
+    },
+]
+
+
+def _parse_version_tuple(v: str) -> tuple:
+    parts = []
+    for p in v.split("."):
+        try:
+            parts.append(int(p))
+        except ValueError:
+            parts.append(0)
+    return tuple(parts)
+
+
+def extract_and_format_known_cve_block(raw: str) -> str:
+    """Skanuje surowy tekst wynikow narzedzi pod katem nazw produktow z bazy
+    KNOWN_CRITICAL_CVES wraz z wersja - jesli wykryta wersja jest STARSZA
+    niz prog podatnosci, generuje blok faktow z rekomendacja naprawy.
+    NIE jest proba eksploitacji - wylacznie dopasowanie tekstowe wzorca
+    produkt+wersja i porownanie liczbowe."""
+    hits = []
+    for entry in KNOWN_CRITICAL_CVES:
+        m = re.search(entry["match_regex"], raw)
+        if not m:
+            continue
+        detected_version = m.group(1)
+        detected_tuple = _parse_version_tuple(detected_version)
+        if detected_tuple < entry["vulnerable_below"]:
+            hits.append((entry, detected_version))
+
+    if not hits:
+        return ""
+
+    lines = [
+        "### ZWERYFIKOWANE FAKTY: ZNANE KRYTYCZNE CVE (wyciagniete automatycznie, NIEPODWAZALNE)",
+    ]
+    for entry, version in hits:
+        lines.append(
+            f"- WYKRYTO: {entry['product']} w wersji {version} - PODATNA na "
+            f"{entry['cve_id']} (CVSS {entry['cvss']})"
+        )
+        lines.append(f"  Opis: {entry['description']}")
+        lines.append(f"  REKOMENDACJA NAPRAWY: {entry['remediation']}")
+    lines.append(
+        "UZYWAJ WYLACZNIE powyzszych, faktycznie wykrytych dopasowan "
+        "produkt+wersja. NIE zmyslaj innych CVE ani wersji ktorych nie ma "
+        "na tej liscie. NIGDY nie sugeruj proby wykorzystania (eksploitacji) "
+        "tej podatnosci - wylacznie zglos ja jako ryzyko do naprawy przez "
+        "aktualizacje."
+    )
+    return "\n".join(lines)
